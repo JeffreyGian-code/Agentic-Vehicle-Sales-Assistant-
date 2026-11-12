@@ -13,6 +13,47 @@ User -> LangChain agent -> SearchRequest -> search_vehicles tool
 the optional filters produced by the LLM. PostgreSQL is reached only through
 `VehicleService` and its repository; the tool never constructs SQL itself.
 
+## Quick start (Windows)
+
+Double-click `run.bat`, or run it from a terminal:
+
+| Command | What it does |
+|---------|--------------|
+| `run.bat` | Sets up what is missing (`.env`, `.venv`, `npm install`), starts PostgreSQL, the API and the web UI, then opens http://localhost:5173 |
+| `run.bat stop` | Stops the API, the web UI and the database container |
+| `run.bat mock` | Starts only the web UI with a mock API (no Docker or API key needed) |
+
+Before the first run, have Docker Desktop running and Node.js 20+ and Python 3.12 or 3.13 installed
+(see [Prerequisites](#prerequisites)).
+
+What `run.bat` does on each run:
+
+- **Checks first.** It stops with a clear message if Docker Desktop isn't running or Node.js isn't installed.
+- **First-time setup, only if missing:**
+  - If there is no `.env`, it creates one from `.env.example`, opens it in Notepad and stops. Fill in
+    `OPENROUTER_API_KEY`, `POSTGRES_PASSWORD` and `DATABASE_URL` (see [Configure secrets](#2-configure-secrets)),
+    save, and run it again. It also stops if `.env` still contains the placeholder API key.
+  - It creates the Python environment `.venv` and installs the backend packages, including `psycopg[binary]`.
+  - It runs `npm install` in `frontend/`.
+- **Starts the services.** PostgreSQL starts in Docker and the script waits until it is healthy. The API
+  (http://localhost:8000, docs at http://localhost:8000/docs) and the web UI (http://localhost:5173) each
+  run in their own window, titled "VSA API" and "VSA Frontend", so you can read their logs.
+- **Waits, then opens the browser.** It waits for the API health check and the web UI to respond before
+  opening http://localhost:5173.
+- **Safe to run again.** It skips anything that is already installed or already running.
+
+Troubleshooting:
+
+- **"API did not start in time"**: read the error in the "VSA API" window. Usually `.env` has a wrong
+  `DATABASE_URL` or API key.
+- **Port 8000 or 5173 already in use**: run `run.bat stop`, then `run.bat` again.
+- **Database fails to start**: check `docker compose logs postgres`.
+- **Dependencies changed** (new entries in `requirements.txt` or `frontend/package.json`): the script only
+  installs when `.venv` or `frontend/node_modules` is missing. Delete that folder, or run
+  `.venv\Scripts\python -m pip install -r requirements.txt` or `npm install` in `frontend/` yourself.
+
+The manual steps are below.
+
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running)
