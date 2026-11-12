@@ -1,99 +1,141 @@
-# Vehicle Agent with PostgreSQL
+# Vehicle Sales Assistant (LangChain + PostgreSQL)
 
-The application keeps its existing architecture:
+A command-line AI assistant that helps Indian customers find vehicles, look up
+details, and calculate EMIs. Vehicle data lives in PostgreSQL, which runs in
+Docker. No local PostgreSQL install is needed.
 
 ```text
 User -> LangChain agent -> SearchRequest -> search_vehicles tool
-     -> VehicleService -> PostgreSQL -> list[Vehicle]
+     -> VehicleService -> PostgresVehicleRepository -> PostgreSQL -> list[Vehicle]
 ```
 
 `Vehicle` represents a row stored in the database. `SearchRequest` represents
 the optional filters produced by the LLM. PostgreSQL is reached only through
-`VehicleService`; the tool never constructs SQL itself.
+`VehicleService` and its repository; the tool never constructs SQL itself.
 
-## 1. Install PostgreSQL and create the database
+## Prerequisites
 
-Install PostgreSQL for Windows, including the command-line tools. Open a new
-PowerShell window and create a dedicated local application account:
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running)
+- Python 3.12 or 3.13. Python 3.14 works but prints a harmless Pydantic V1 warning from LangChain.
+- An [OpenRouter](https://openrouter.ai/) API key
 
-```powershell
-psql -U postgres -d postgres
-```
+## 1. Create the Python environment
 
-At the `postgres=#` prompt, run the following. Choose your own strong local
-password; do not use the example text literally.
-
-```sql
-CREATE ROLE vehicle_app LOGIN PASSWORD 'choose-a-strong-local-password';
-CREATE DATABASE vehicle_agent OWNER vehicle_app;
-\q
-```
-
-If PowerShell cannot find `psql`, add PostgreSQL's `bin` directory to PATH or
-run its full path (for example, `C:\Program Files\PostgreSQL\17\bin\psql.exe`).
-
-## 2. Create the table and load 200 vehicles
-
-From the project directory, run:
+From the project directory:
 
 ```powershell
-psql -U vehicle_app -d vehicle_agent -f database/schema.sql
-psql -U vehicle_app -d vehicle_agent -f database/seed.sql
-psql -U vehicle_app -d vehicle_agent -c "SELECT COUNT(*) FROM vehicles;"
+py -3.13 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install "psycopg[binary]==3.3.5"
 ```
 
-The final command must return `200`. `database/seed.sql` contains 20 sensible
-Indian-market model families and 10 trim levels each. It is deterministic and
-idempotent for local development: it clears and replaces the `vehicles` table,
-so do not run it against a database containing real production data.
+`psycopg[binary]` bundles the PostgreSQL client library (`libpq`), so nothing
+else has to be installed on the machine.
 
-## 3. Configure secrets safely
-
-Copy the template and put your real values only in `.env`:
+## 2. Configure secrets
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Set `DATABASE_URL` in `.env`:
+Edit `.env` and set real values:
 
 ```text
-DATABASE_URL=postgresql://vehicle_app:your-url-encoded-password@localhost:5432/vehicle_agent
+OPENROUTER_API_KEY=<your OpenRouter key>
+
+# Set to true only with a real LangSmith key, otherwise every request logs a 403 error.
+LANGSMITH_TRACING=false
+LANGSMITH_API_KEY=<your LangSmith key, optional>
+LANGSMITH_PROJECT=vehicle-agent
+
+# Password for the Docker PostgreSQL container
+POSTGRES_PASSWORD=<choose-a-strong-password>
+
+# Same password as above, URL-encoded (@ -> %40, : -> %3A, / -> %2F, # -> %23)
+DATABASE_URL=postgresql+psycopg://vehicle_app:<same-password>@localhost:5432/vehicle_agent
 ```
 
-URL-encode password characters such as `@`, `:`, `/`, and `#`. `.env` is
-ignored by Git; `.env.example` is intentionally safe to commit. Rotate any API
-keys that have previously appeared in a terminal, chat, screenshot, or commit.
+`.env` is ignored by Git; `.env.example` is intentionally safe to commit.
+Rotate any API keys that have previously appeared in a terminal, chat,
+screenshot, or commit.
 
-## 4. Install the PostgreSQL Python driver
-
-With the project's virtual environment active:
+## 3. Start PostgreSQL
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirement.txt
+docker compose up -d
 ```
 
-The added dependency is `psycopg[binary]`, the PostgreSQL driver used by the
-application.
+`docker-compose.yml` starts a `postgres:17` container named `vehicle-pg`. The
+user is `vehicle_app` and the database is `vehicle_agent`. Data is stored in the
+`vehicle_pgdata` volume, so it survives restarts.
 
-## 5. Run and verify
+On the **first** start, with an empty volume, PostgreSQL automatically runs the
+SQL files in `database/` in alphabetical order:
+
+| File                  | Purpose                                                        |
+|-----------------------|----------------------------------------------------------------|
+| `database/schema.sql` | Creates the `vehicles` table and its indexes                   |
+| `database/seed.sql`   | Loads 200 vehicles (20 Indian-market models × 10 trims each)   |
+
+Check that the data loaded (expect `200`):
 
 ```powershell
-python -m pytest app/tests/test_vehicle_sevice.py
+docker compose exec postgres psql -U vehicle_app -d vehicle_agent -c "SELECT COUNT(*) FROM vehicles;"
+```
+
+`seed.sql` clears and replaces the `vehicles` table. Never run it against a
+database that contains real data.
+
+## 4. Run the assistant
+
+```powershell
 python main.py
 ```
 
-Try: `Find Honda sedans under 12 lakh.` The LLM creates a validated
-`SearchRequest`; `VehicleService` executes a parameterized query and returns
-validated `Vehicle` objects. If PostgreSQL is not configured, the integration
-test is skipped and the application reports a clear `DATABASE_URL` error when
-it first searches.
+Try:
+
+- `Find Honda sedans under 10 lakh`
+- `Show me Toyota vehicles`
+- `What is the EMI on 12 lakh at 9% for 5 years?`
+
+Type `exit` to quit.
+
+## Day-to-day commands
+
+| Task                                     | Command                                  |
+|------------------------------------------|------------------------------------------|
+| Start the database                       | `docker compose start`                   |
+| Stop the database                        | `docker compose stop`                    |
+| Check status                             | `docker compose ps`                      |
+| Open a SQL shell                         | `docker compose exec postgres psql -U vehicle_app -d vehicle_agent` |
+| Reset everything (re-runs schema + seed) | `docker compose down -v` then `docker compose up -d` |
+
+Changes to `database/*.sql` or `POSTGRES_PASSWORD` only take effect after a
+reset, because the init scripts and password apply only to a fresh volume.
+
+## Running tests
+
+```powershell
+python -m pytest
+```
+
+`app/tests/test_vehicle_service.py` is an integration test and needs the
+database container to be running.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `password authentication failed for user "vehicle_app"` | `DATABASE_URL` password does not match the one the volume was created with. Fix `.env`, then reset (`docker compose down -v`, `docker compose up -d`). |
+| `relation "vehicles" does not exist` | The volume was created before `database/` existed. Reset as above. |
+| `port is already allocated` / port 5432 in use | A local PostgreSQL service is running. Stop it, or set `POSTGRES_PORT=5433` in `.env` and use `:5433` in `DATABASE_URL`. |
+| `LangSmithError ... 403 Forbidden` | Set `LANGSMITH_TRACING=false` or provide a valid `LANGSMITH_API_KEY`. |
+| `DATABASE_URL is not configured.` | `.env` is missing or does not define `DATABASE_URL`. |
 
 ## Notes on the implementation
 
-- Queries use `%s` parameters rather than string interpolation, preventing SQL injection.
-- Database connections are opened only for the service call and closed by context managers.
-- The three commonly filtered fields have database indexes.
-- Matching remains case-insensitive, preserving the behavior of the former JSON service.
-- A small command-line app does not need a connection pool yet. Add one when moving to a long-running web/API deployment.
+- Queries use SQLAlchemy bound parameters (`:brand`, `:max_price`, …) rather than string interpolation, preventing SQL injection.
+- Connections come from a SQLAlchemy engine with `pool_pre_ping=True` (`app/database.py`) and are released by context managers after each call.
+- Brand, model, vehicle type and price are indexed. Text matching is case-insensitive.
+- The `model` filter is an exact match on the full name including the trim (e.g. `City VX`), so a search for just `City` returns nothing.
