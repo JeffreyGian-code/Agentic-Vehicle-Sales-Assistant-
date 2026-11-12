@@ -22,7 +22,7 @@ def test_search_by_brand_and_price():
 
     assert len(results) == 5
 
-    names = [vehicle.name for vehicle in results]
+    names = [vehicle.model for vehicle in results]
 
     assert "Amaze Base" in names
     assert "Amaze VX" in names
@@ -34,7 +34,7 @@ def test_get_vehicle_by_id():
     vehicle = service.get_by_id(1)
 
     assert vehicle is not None
-    assert vehicle.name == "Amaze Base"
+    assert vehicle.model == "Amaze Base"
     assert vehicle.brand == "Honda"
 
 

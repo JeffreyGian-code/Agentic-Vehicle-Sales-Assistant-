@@ -9,12 +9,15 @@ class FinanceService:
 
         monthly_rate = annual_rate / 12 / 100
 
-        emi = (
-            principal
-            * monthly_rate
-            * (1 + monthly_rate) ** months
-            / ((1 + monthly_rate) ** months - 1)
-        )
+        if monthly_rate == 0:
+            emi = principal / months
+        else:
+            emi = (
+                principal
+                * monthly_rate
+                * (1 + monthly_rate) ** months
+                / ((1 + monthly_rate) ** months - 1)
+            )
 
         emi = round(emi, 2)
 
