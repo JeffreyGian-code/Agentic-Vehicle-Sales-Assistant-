@@ -13,47 +13,6 @@ User -> LangChain agent -> SearchRequest -> search_vehicles tool
 the optional filters produced by the LLM. PostgreSQL is reached only through
 `VehicleService` and its repository; the tool never constructs SQL itself.
 
-## Quick start (Windows)
-
-Double-click `run.bat`, or run it from a terminal:
-
-| Command | What it does |
-|---------|--------------|
-| `run.bat` | Sets up what is missing (`.env`, `.venv`, `npm install`), starts PostgreSQL, the API and the web UI, then opens http://localhost:5173 |
-| `run.bat stop` | Stops the API, the web UI and the database container |
-| `run.bat mock` | Starts only the web UI with a mock API (no Docker or API key needed) |
-
-Before the first run, have Docker Desktop running and Node.js 20+ and Python 3.12 or 3.13 installed
-(see [Prerequisites](#prerequisites)).
-
-What `run.bat` does on each run:
-
-- **Checks first.** It stops with a clear message if Docker Desktop isn't running or Node.js isn't installed.
-- **First-time setup, only if missing:**
-  - If there is no `.env`, it creates one from `.env.example`, opens it in Notepad and stops. Fill in
-    `OPENROUTER_API_KEY`, `POSTGRES_PASSWORD` and `DATABASE_URL` (see [Configure secrets](#2-configure-secrets)),
-    save, and run it again. It also stops if `.env` still contains the placeholder API key.
-  - It creates the Python environment `.venv` and installs the backend packages, including `psycopg[binary]`.
-  - It runs `npm install` in `frontend/`.
-- **Starts the services.** PostgreSQL starts in Docker and the script waits until it is healthy. The API
-  (http://localhost:8000, docs at http://localhost:8000/docs) and the web UI (http://localhost:5173) each
-  run in their own window, titled "VSA API" and "VSA Frontend", so you can read their logs.
-- **Waits, then opens the browser.** It waits for the API health check and the web UI to respond before
-  opening http://localhost:5173.
-- **Safe to run again.** It skips anything that is already installed or already running.
-
-Troubleshooting:
-
-- **"API did not start in time"**: read the error in the "VSA API" window. Usually `.env` has a wrong
-  `DATABASE_URL` or API key.
-- **Port 8000 or 5173 already in use**: run `run.bat stop`, then `run.bat` again.
-- **Database fails to start**: check `docker compose logs postgres`.
-- **Dependencies changed** (new entries in `requirements.txt` or `frontend/package.json`): the script only
-  installs when `.venv` or `frontend/node_modules` is missing. Delete that folder, or run
-  `.venv\Scripts\python -m pip install -r requirements.txt` or `npm install` in `frontend/` yourself.
-
-The manual steps are below.
-
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running)
@@ -141,65 +100,6 @@ Try:
 - `What is the EMI on 12 lakh at 9% for 5 years?`
 
 Type `exit` to quit.
-
-## 5. Run the REST API (for a frontend)
-
-```powershell
-uvicorn app.api.main:app --reload
-```
-
-The API listens on `http://localhost:8000`. Interactive docs are at
-`http://localhost:8000/docs`.
-
-| Method | Path                        | Description |
-|--------|-----------------------------|-------------|
-| GET    | `/api/health`               | Liveness check |
-| POST   | `/api/chat`                 | Chat with the agent. Body `{"message": "...", "session_id": "optional"}` → `{"reply": "...", "session_id": "..."}` |
-
-There are only these two endpoints. Vehicle search, vehicle details and EMI
-calculation are the agent's tools, so clients get them by asking in
-`/api/chat` (e.g. "Honda sedans under 10 lakh", "EMI on 8 lakh at 8.5% for 5
-years"), not through separate routes.
-
-Chat memory is kept per `session_id`: omit it on the first message, then send
-back the returned `session_id` with every following message. Each conversation
-is capped by the agent's model-call limit; when it is reached `/api/chat`
-returns **429** and the frontend should start a new conversation (drop the
-`session_id`). Conversations are held in memory, so they reset when the server
-restarts.
-
-Allowed frontend origins (CORS) come from `CORS_ORIGINS` in `.env`
-(comma-separated; default `http://localhost:3000,http://localhost:5173`).
-
-### Rate limiting (per IP)
-
-`POST /api/chat` is the only rate-limited route: it is the one entry point to
-the paid LLM and, through the agent's tools, the database. Each client IP gets
-a fixed number of chat requests per time window. Going over
-returns **429** with `{"detail": "Too many requests from your IP..."}` and a
-`Retry-After` header (seconds until the next request is allowed).
-
-| Setting (`.env`)          | Default              | Applies to |
-|---------------------------|----------------------|------------|
-| `RATE_LIMIT_CHAT`         | `10/minute;100/day`  | `POST /api/chat` |
-| `RATE_LIMIT_ENABLED`      | `true`               | turn limiting off for local debugging |
-| `RATE_LIMIT_STORAGE_URI`  | `memory://`          | use `redis://host:6379` when running several workers/servers |
-
-`/api/health` is not limited. Any route added later must add
-`@limiter.limit(...)` and a `request: Request` parameter, otherwise it is
-unlimited. Behind a reverse
-proxy or load balancer, start uvicorn with
-`--proxy-headers --forwarded-allow-ips=<proxy ip>` so the real client IP is
-used instead of the proxy's.
-
-```text
-app/api/
-├── main.py           # create_app(): CORS, rate limiting, routers
-├── rate_limit.py     # per-IP limiter + 429 handler
-├── dependencies.py   # agent provider (overridable in tests)
-├── schemas.py        # request/response models
-└── routes/           # health, chat
-```
 
 ## Day-to-day commands
 
