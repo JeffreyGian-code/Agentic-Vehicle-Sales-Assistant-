@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 
 from app.api.rate_limit import limiter, rate_limit_exceeded_handler
-from app.api.routes import chat, finance, health, vehicles
+from app.api.routes import chat, health
 
 load_dotenv()
 
@@ -19,9 +19,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
     )
 
-    # Per-IP rate limiting. Each route opts in with @limiter.limit(...);
-    # slowapi's global middleware is not used because it cannot see routes
-    # inside FastAPI's included routers.
+    # Per-IP rate limiting on POST /api/chat (see rate_limit.py).
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
@@ -40,7 +38,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    for router in (health.router, chat.router, vehicles.router, finance.router):
+    # Only two public routes. Vehicle search/details and EMI are agent tools,
+    # reached through /api/chat, not separate endpoints.
+    for router in (health.router, chat.router):
         app.include_router(router, prefix="/api")
 
     return app

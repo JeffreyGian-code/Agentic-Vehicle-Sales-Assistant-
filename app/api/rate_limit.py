@@ -1,6 +1,6 @@
 """Per-IP rate limiting (slowapi).
 
-Every request is counted against the caller's IP address. When an IP goes
+Every chat request is counted against the caller's IP address. When an IP goes
 over its allowance inside the time window, the API answers 429 until the
 window frees up.
 """
@@ -19,16 +19,15 @@ from slowapi.util import get_remote_address
 load_dotenv()
 
 RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
-DEFAULT_LIMIT = os.getenv("RATE_LIMIT_DEFAULT", "60/minute")
 CHAT_LIMIT = os.getenv("RATE_LIMIT_CHAT", "10/minute;100/day")
 
 # memory:// keeps counters inside this process. Use e.g. "redis://host:6379"
 # when running several workers/servers so they share the same counters.
 STORAGE_URI = os.getenv("RATE_LIMIT_STORAGE_URI", "memory://")
 
-# Every route must be decorated with @limiter.limit(CHAT_LIMIT or
-# DEFAULT_LIMIT) and take a `request: Request` parameter; routes without a
-# decorator (e.g. /api/health) are not limited.
+# Only POST /api/chat is limited (@limiter.limit(CHAT_LIMIT)); it is the one
+# route that reaches the paid LLM and, through the agent's tools, the database.
+# /api/health is intentionally not limited.
 limiter = Limiter(
     key_func=get_remote_address,
     storage_uri=STORAGE_URI,

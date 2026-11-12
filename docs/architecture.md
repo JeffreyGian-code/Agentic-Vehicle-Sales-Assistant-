@@ -31,8 +31,6 @@ flowchart TD
 
     subgraph Routes["API routes (/api)"]
         Chat["POST /chat"]
-        Veh["GET /vehicles<br/>GET /vehicles/{id}"]
-        Fin["POST /finance/emi"]
         Health["GET /health"]
     end
 
@@ -52,7 +50,7 @@ flowchart TD
 
     User --> CLI
     User --> API
-    API --> Chat & Veh & Fin & Health
+    API --> Chat & Health
 
     CLI --> Agent
     Chat --> Agent
@@ -61,15 +59,14 @@ flowchart TD
 
     Tools --> VS
     Tools --> FS
-    Veh --> VS
-    Fin --> FS
 
     VS --> Repo --> DB
 ```
 
-**In short:** chat requests go through the AI agent, which decides which tool
-to call. The direct `/vehicles` and `/finance` endpoints skip the agent and
-call the services straight away. Every database read goes through
+**In short:** the API exposes only `POST /chat` and `GET /health`. Every
+vehicle search, vehicle lookup and EMI calculation goes through the AI agent,
+which decides which tool to call; there are no separate vehicle or finance
+endpoints. Every database read goes through
 `VehicleService` and the repository; nothing else writes SQL.
 
 ## 3. Layers, one by one
@@ -194,20 +191,17 @@ Step by step:
 **429** and the frontend should start a new conversation. Any other failure is
 logged and returned as **500** with a generic message.
 
-## 5. Direct API endpoints (no AI)
-
-Not every request needs the LLM. These endpoints call the services directly,
-so they are fast, cheap and deterministic:
+## 5. Public API surface
 
 | Endpoint | Calls | Notes |
 |----------|-------|-------|
-| `GET /api/vehicles?brand=&model=&max_price=&vehicle_type=` | `VehicleService.search` | Filters validated by `SearchRequest` |
-| `GET /api/vehicles/{id}` | `VehicleService.get_by_id` | 404 if not found |
-| `POST /api/finance/emi` | `FinanceService.calculate_emi` | Inputs validated by `EmiRequest` (e.g. `months` 1–600) |
+| `POST /api/chat` | LangChain agent | Rate limited per IP (`RATE_LIMIT_CHAT`, default `10/minute;100/day`) |
 | `GET /api/health` | none | Liveness check, not rate limited |
 
-Vehicle and finance routes share the `RATE_LIMIT_DEFAULT` limit (default
-`60/minute`, counted per route).
+Vehicle search (`search_vehicles`), vehicle details (`get_vehicle_details`) and
+EMI (`calculate_emi`) are agent tools only. Keeping them off the public API
+means the chat endpoint is the single entry point, so one rate limit protects
+both the LLM and the database.
 
 ## 6. Cross-cutting concerns
 
@@ -228,7 +222,7 @@ Vehicle and finance routes share the `RATE_LIMIT_DEFAULT` limit (default
 | Test file | What it checks |
 |-----------|----------------|
 | `app/tests/test_finance_service.py` | EMI maths (unit test) |
-| `app/tests/test_api.py` | API routes, with services and agent replaced by fakes |
+| `app/tests/test_api.py` | Chat and health routes, rate limiting, with the agent replaced by a fake |
 | `app/tests/test_vehicle_service.py` | Real queries against the Docker database (integration test) |
 | `app/tests/evaluation.py` | Sample prompts and the tool the agent is expected to pick |
 

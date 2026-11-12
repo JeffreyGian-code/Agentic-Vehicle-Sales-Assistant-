@@ -2,30 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from limits import parse_many
 
-from app.api.dependencies import get_agent, get_vehicle_service
+from app.api.dependencies import get_agent
 from app.api.main import app
-from app.api.rate_limit import CHAT_LIMIT, DEFAULT_LIMIT, limiter
-from app.models.vehicle import Vehicle
-
-
-VEHICLES = [
-    Vehicle(id=1, model="Amaze Base", brand="Honda", price=700000, vehicle_type="Sedan"),
-    Vehicle(id=2, model="City VX", brand="Honda", price=1300000, vehicle_type="Sedan"),
-]
-
-
-class FakeVehicleService:
-    def __init__(self):
-        self.last_filters = None
-
-    def search(self, brand=None, model=None, max_price=None, vehicle_type=None):
-        self.last_filters = dict(
-            brand=brand, model=model, max_price=max_price, vehicle_type=vehicle_type
-        )
-        return [v for v in VEHICLES if max_price is None or v.price <= max_price]
-
-    def get_by_id(self, vehicle_id):
-        return next((v for v in VEHICLES if v.id == vehicle_id), None)
+from app.api.rate_limit import CHAT_LIMIT, limiter
 
 
 class FakeMessage:
@@ -43,14 +22,6 @@ class FakeAgent:
         if self.error:
             raise self.error
         return {"messages": [FakeMessage("Hello from the agent")]}
-
-
-@pytest.fixture
-def vehicle_service():
-    service = FakeVehicleService()
-    app.dependency_overrides[get_vehicle_service] = lambda: service
-    yield service
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -79,56 +50,6 @@ def test_health(client):
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-
-
-def test_search_vehicles(client, vehicle_service):
-    response = client.get(
-        "/api/vehicles",
-        params={"brand": "Honda", "max_price": 1000000, "vehicle_type": "Sedan"},
-    )
-
-    assert response.status_code == 200
-    assert [v["model"] for v in response.json()] == ["Amaze Base"]
-    assert vehicle_service.last_filters == {
-        "brand": "Honda",
-        "model": None,
-        "max_price": 1000000,
-        "vehicle_type": "Sedan",
-    }
-
-
-def test_search_rejects_negative_price(client, vehicle_service):
-    response = client.get("/api/vehicles", params={"max_price": -1})
-    assert response.status_code == 422
-
-
-def test_get_vehicle(client, vehicle_service):
-    response = client.get("/api/vehicles/2")
-    assert response.status_code == 200
-    assert response.json()["model"] == "City VX"
-
-
-def test_get_missing_vehicle(client, vehicle_service):
-    response = client.get("/api/vehicles/999")
-    assert response.status_code == 404
-
-
-def test_calculate_emi(client):
-    response = client.post(
-        "/api/finance/emi",
-        json={"principal": 800000, "annual_rate": 8.5, "months": 60},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["monthly_emi"] == pytest.approx(16413.23)
-
-
-def test_calculate_emi_validation(client):
-    response = client.post(
-        "/api/finance/emi",
-        json={"principal": 0, "annual_rate": 8.5, "months": 60},
-    )
-    assert response.status_code == 422
 
 
 def test_chat_starts_new_session(client):
@@ -186,35 +107,31 @@ def test_chat_rate_limited_per_ip(client):
     assert int(response.headers["Retry-After"]) > 0
 
 
-def test_other_routes_use_default_limit(client, vehicle_service):
-    allowed = per_window(DEFAULT_LIMIT)
-
-    for _ in range(allowed):
-        assert client.get("/api/vehicles/1").status_code == 200
-
-    assert client.get("/api/vehicles/1").status_code == 429
-
-
-def test_limits_are_per_ip(client, vehicle_service):
-    allowed = per_window(DEFAULT_LIMIT)
+def test_chat_limits_are_per_ip(client):
+    use_agent(FakeAgent())
+    allowed = per_window(CHAT_LIMIT)
     other_ip = TestClient(app, client=("10.0.0.2", 5000))
 
     for _ in range(allowed + 1):
-        client.get("/api/vehicles/1")
+        client.post("/api/chat", json={"message": "Hi"})
 
-    assert client.get("/api/vehicles/1").status_code == 429
-    assert other_ip.get("/api/vehicles/1").status_code == 200
+    assert client.post("/api/chat", json={"message": "Hi"}).status_code == 429
+    assert other_ip.post("/api/chat", json={"message": "Hi"}).status_code == 200
 
 
 def test_health_is_never_rate_limited(client):
-    for _ in range(per_window(DEFAULT_LIMIT) + 5):
+    for _ in range(per_window(CHAT_LIMIT) + 5):
         assert client.get("/api/health").status_code == 200
 
 
-def test_finance_route_is_rate_limited(client):
-    payload = {"principal": 100000, "annual_rate": 9, "months": 12}
-
-    for _ in range(per_window(DEFAULT_LIMIT)):
-        assert client.post("/api/finance/emi", json=payload).status_code == 200
-
-    assert client.post("/api/finance/emi", json=payload).status_code == 429
+@pytest.mark.parametrize(
+    "method, path",
+    [
+        ("get", "/api/vehicles"),
+        ("get", "/api/vehicles/1"),
+        ("post", "/api/finance/emi"),
+    ],
+)
+def test_only_chat_and_health_are_exposed(client, method, path):
+    # Vehicle search/details and EMI are agent tools, not public endpoints.
+    assert getattr(client, method)(path).status_code == 404

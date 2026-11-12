@@ -114,9 +114,11 @@ The API listens on `http://localhost:8000`. Interactive docs are at
 |--------|-----------------------------|-------------|
 | GET    | `/api/health`               | Liveness check |
 | POST   | `/api/chat`                 | Chat with the agent. Body `{"message": "...", "session_id": "optional"}` → `{"reply": "...", "session_id": "..."}` |
-| GET    | `/api/vehicles`             | Search. Query params: `brand`, `model`, `max_price`, `vehicle_type` |
-| GET    | `/api/vehicles/{id}`        | Vehicle details (404 if not found) |
-| POST   | `/api/finance/emi`          | Body `{"principal": 800000, "annual_rate": 8.5, "months": 60}` |
+
+There are only these two endpoints. Vehicle search, vehicle details and EMI
+calculation are the agent's tools, so clients get them by asking in
+`/api/chat` (e.g. "Honda sedans under 10 lakh", "EMI on 8 lakh at 8.5% for 5
+years"), not through separate routes.
 
 Chat memory is kept per `session_id`: omit it on the first message, then send
 back the returned `session_id` with every following message. Each conversation
@@ -130,19 +132,21 @@ Allowed frontend origins (CORS) come from `CORS_ORIGINS` in `.env`
 
 ### Rate limiting (per IP)
 
-Each client IP gets a fixed number of requests per time window. Going over
+`POST /api/chat` is the only rate-limited route: it is the one entry point to
+the paid LLM and, through the agent's tools, the database. Each client IP gets
+a fixed number of chat requests per time window. Going over
 returns **429** with `{"detail": "Too many requests from your IP..."}` and a
 `Retry-After` header (seconds until the next request is allowed).
 
 | Setting (`.env`)          | Default              | Applies to |
 |---------------------------|----------------------|------------|
 | `RATE_LIMIT_CHAT`         | `10/minute;100/day`  | `POST /api/chat` |
-| `RATE_LIMIT_DEFAULT`      | `60/minute`          | each vehicle and finance route (counted per route) |
 | `RATE_LIMIT_ENABLED`      | `true`               | turn limiting off for local debugging |
 | `RATE_LIMIT_STORAGE_URI`  | `memory://`          | use `redis://host:6379` when running several workers/servers |
 
-`/api/health` is not limited. New routes must add `@limiter.limit(...)` and a
-`request: Request` parameter, otherwise they are unlimited. Behind a reverse
+`/api/health` is not limited. Any route added later must add
+`@limiter.limit(...)` and a `request: Request` parameter, otherwise it is
+unlimited. Behind a reverse
 proxy or load balancer, start uvicorn with
 `--proxy-headers --forwarded-allow-ips=<proxy ip>` so the real client IP is
 used instead of the proxy's.
@@ -151,9 +155,9 @@ used instead of the proxy's.
 app/api/
 ├── main.py           # create_app(): CORS, rate limiting, routers
 ├── rate_limit.py     # per-IP limiter + 429 handler
-├── dependencies.py   # service / agent providers (overridable in tests)
+├── dependencies.py   # agent provider (overridable in tests)
 ├── schemas.py        # request/response models
-└── routes/           # health, chat, vehicles, finance
+└── routes/           # health, chat
 ```
 
 ## Day-to-day commands
