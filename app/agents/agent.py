@@ -13,7 +13,7 @@ agent_tools = AgentTools()
 system_prompt = load_prompt("vehicle_assistant.md")
 
 model = ChatOpenRouter(
-    model="qwen/qwen3.8-27b:free",
+    model="nvidia/nemotron-3.5-lightning:free",
     base_url="https://openrouter.ai/api/v1",
     temperature=0,
 )
