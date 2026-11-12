@@ -101,6 +101,41 @@ Try:
 
 Type `exit` to quit.
 
+## 5. Run the REST API (for a frontend)
+
+```powershell
+uvicorn app.api.main:app --reload
+```
+
+The API listens on `http://localhost:8000`. Interactive docs are at
+`http://localhost:8000/docs`.
+
+| Method | Path                        | Description |
+|--------|-----------------------------|-------------|
+| GET    | `/api/health`               | Liveness check |
+| POST   | `/api/chat`                 | Chat with the agent. Body `{"message": "...", "session_id": "optional"}` → `{"reply": "...", "session_id": "..."}` |
+| GET    | `/api/vehicles`             | Search. Query params: `brand`, `model`, `max_price`, `vehicle_type` |
+| GET    | `/api/vehicles/{id}`        | Vehicle details (404 if not found) |
+| POST   | `/api/finance/emi`          | Body `{"principal": 800000, "annual_rate": 8.5, "months": 60}` |
+
+Chat memory is kept per `session_id`: omit it on the first message, then send
+back the returned `session_id` with every following message. Each conversation
+is capped by the agent's model-call limit; when it is reached `/api/chat`
+returns **429** and the frontend should start a new conversation (drop the
+`session_id`). Conversations are held in memory, so they reset when the server
+restarts.
+
+Allowed frontend origins (CORS) come from `CORS_ORIGINS` in `.env`
+(comma-separated; default `http://localhost:3000,http://localhost:5173`).
+
+```text
+app/api/
+├── main.py           # create_app(): CORS + routers
+├── dependencies.py   # service / agent providers (overridable in tests)
+├── schemas.py        # request/response models
+└── routes/           # health, chat, vehicles, finance
+```
+
 ## Day-to-day commands
 
 | Task                                     | Command                                  |
