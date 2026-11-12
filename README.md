@@ -128,9 +128,29 @@ restarts.
 Allowed frontend origins (CORS) come from `CORS_ORIGINS` in `.env`
 (comma-separated; default `http://localhost:3000,http://localhost:5173`).
 
+### Rate limiting (per IP)
+
+Each client IP gets a fixed number of requests per time window. Going over
+returns **429** with `{"detail": "Too many requests from your IP..."}` and a
+`Retry-After` header (seconds until the next request is allowed).
+
+| Setting (`.env`)          | Default              | Applies to |
+|---------------------------|----------------------|------------|
+| `RATE_LIMIT_CHAT`         | `10/minute;100/day`  | `POST /api/chat` |
+| `RATE_LIMIT_DEFAULT`      | `60/minute`          | each vehicle and finance route (counted per route) |
+| `RATE_LIMIT_ENABLED`      | `true`               | turn limiting off for local debugging |
+| `RATE_LIMIT_STORAGE_URI`  | `memory://`          | use `redis://host:6379` when running several workers/servers |
+
+`/api/health` is not limited. New routes must add `@limiter.limit(...)` and a
+`request: Request` parameter, otherwise they are unlimited. Behind a reverse
+proxy or load balancer, start uvicorn with
+`--proxy-headers --forwarded-allow-ips=<proxy ip>` so the real client IP is
+used instead of the proxy's.
+
 ```text
 app/api/
-├── main.py           # create_app(): CORS + routers
+├── main.py           # create_app(): CORS, rate limiting, routers
+├── rate_limit.py     # per-IP limiter + 429 handler
 ├── dependencies.py   # service / agent providers (overridable in tests)
 ├── schemas.py        # request/response models
 └── routes/           # health, chat, vehicles, finance

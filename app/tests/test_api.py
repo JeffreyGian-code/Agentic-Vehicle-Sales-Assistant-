@@ -1,8 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
+from limits import parse_many
 
 from app.api.dependencies import get_agent, get_vehicle_service
 from app.api.main import app
+from app.api.rate_limit import CHAT_LIMIT, DEFAULT_LIMIT, limiter
 from app.models.vehicle import Vehicle
 
 
@@ -63,8 +65,14 @@ def use_agent(agent):
 
 @pytest.fixture(autouse=True)
 def clear_overrides():
+    limiter.reset()
     yield
     app.dependency_overrides.clear()
+    limiter.reset()
+
+
+def per_window(limit_string):
+    return min(item.amount for item in parse_many(limit_string))
 
 
 def test_health(client):
@@ -162,3 +170,51 @@ def test_chat_unexpected_error(client):
 
     assert response.status_code == 500
     assert "boom" not in response.text
+
+
+def test_chat_rate_limited_per_ip(client):
+    use_agent(FakeAgent())
+    allowed = per_window(CHAT_LIMIT)
+
+    for _ in range(allowed):
+        assert client.post("/api/chat", json={"message": "Hi"}).status_code == 200
+
+    response = client.post("/api/chat", json={"message": "Hi"})
+
+    assert response.status_code == 429
+    assert "Too many requests" in response.json()["detail"]
+    assert int(response.headers["Retry-After"]) > 0
+
+
+def test_other_routes_use_default_limit(client, vehicle_service):
+    allowed = per_window(DEFAULT_LIMIT)
+
+    for _ in range(allowed):
+        assert client.get("/api/vehicles/1").status_code == 200
+
+    assert client.get("/api/vehicles/1").status_code == 429
+
+
+def test_limits_are_per_ip(client, vehicle_service):
+    allowed = per_window(DEFAULT_LIMIT)
+    other_ip = TestClient(app, client=("10.0.0.2", 5000))
+
+    for _ in range(allowed + 1):
+        client.get("/api/vehicles/1")
+
+    assert client.get("/api/vehicles/1").status_code == 429
+    assert other_ip.get("/api/vehicles/1").status_code == 200
+
+
+def test_health_is_never_rate_limited(client):
+    for _ in range(per_window(DEFAULT_LIMIT) + 5):
+        assert client.get("/api/health").status_code == 200
+
+
+def test_finance_route_is_rate_limited(client):
+    payload = {"principal": 100000, "annual_rate": 9, "months": 12}
+
+    for _ in range(per_window(DEFAULT_LIMIT)):
+        assert client.post("/api/finance/emi", json=payload).status_code == 200
+
+    assert client.post("/api/finance/emi", json=payload).status_code == 429

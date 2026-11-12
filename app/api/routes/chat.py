@@ -2,9 +2,10 @@ import logging
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.dependencies import get_agent
+from app.api.rate_limit import CHAT_LIMIT, limiter
 from app.api.schemas import ChatRequest, ChatResponse
 
 logger = logging.getLogger(__name__)
@@ -32,15 +33,17 @@ def _message_text(message: Any) -> str:
 
 
 @router.post("", response_model=ChatResponse)
+@limiter.limit(CHAT_LIMIT)
 def chat(
-    request: ChatRequest,
+    request: Request,
+    body: ChatRequest,
     agent: Annotated[Any, Depends(get_agent)],
 ) -> ChatResponse:
-    session_id = request.session_id or str(uuid.uuid4())
+    session_id = body.session_id or str(uuid.uuid4())
 
     try:
         result = agent.invoke(
-            {"messages": [{"role": "user", "content": request.message}]},
+            {"messages": [{"role": "user", "content": body.message}]},
             config={"configurable": {"thread_id": session_id}},
         )
     except Exception as exc:

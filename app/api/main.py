@@ -3,7 +3,9 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 
+from app.api.rate_limit import limiter, rate_limit_exceeded_handler
 from app.api.routes import chat, finance, health, vehicles
 
 load_dotenv()
@@ -16,6 +18,13 @@ def create_app() -> FastAPI:
         title="Vehicle Sales Assistant API",
         version="1.0.0",
     )
+
+    # Per-IP rate limiting. Each route opts in with @limiter.limit(...);
+    # slowapi's global middleware is not used because it cannot see routes
+    # inside FastAPI's included routers.
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
 
     origins = [
         origin.strip()
