@@ -11,8 +11,6 @@ __pycache__/
 
 .vscode/
 
-database/
-
 test.py
 test2.py
 
