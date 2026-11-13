@@ -2,23 +2,94 @@ name: Vehicle Agent CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  backend:
+    name: Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      DATABASE_URL: postgresql+psycopg://vehicle_ci:vehicle_ci@localhost:5432/vehicle_ci
+      LANGSMITH_TRACING: "false"
+      OPENROUTER_API_KEY: ""
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: vehicle_ci
+          POSTGRES_PASSWORD: vehicle_ci
+          POSTGRES_DB: vehicle_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vehicle_ci -d vehicle_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt "psycopg[binary]==3.3.5"
+
+      - name: Initialize test database
+        run: |
+          docker exec --interactive "${{ job.services.postgres.id }}" psql -U vehicle_ci -d vehicle_ci --set ON_ERROR_STOP=1 < database/schema.sql
+          docker exec --interactive "${{ job.services.postgres.id }}" psql -U vehicle_ci -d vehicle_ci --set ON_ERROR_STOP=1 < database/seed.sql
 
       - name: Run tests
         run: python -m pytest
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

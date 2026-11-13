@@ -123,6 +123,30 @@ python -m pytest
 `app/tests/test_vehicle_service.py` is an integration test and needs the
 database container to be running.
 
+## Continuous integration
+
+[Vehicle Agent CI](.github/workflows/ci.yml) runs on pull requests targeting
+`main`, pushes to `main`, and manual runs from GitHub's Actions tab. Two jobs
+run independently:
+
+- **Backend:** Python 3.12, cached pip downloads, and a disposable PostgreSQL 17
+  service. CI loads `database/schema.sql` followed by `database/seed.sql`, then
+  runs `python -m pytest`. The database credentials are CI-only values; no
+  repository secrets are required. AI calls use the existing test doubles,
+  the OpenRouter key is empty, and LangSmith tracing is disabled.
+- **Frontend:** Node.js 24, cached npm downloads, and `npm ci` using
+  `frontend/package-lock.json`, followed by tests, lint, and a production build.
+
+The workflow has read-only repository permissions. New runs cancel older runs
+for the same pull request or branch. Backend jobs time out after 15 minutes;
+frontend jobs time out after 10 minutes.
+
+After pushing the workflow and letting it run, configure a branch protection
+rule or ruleset for `main` in GitHub's repository settings. Require pull requests
+and require both **Backend** and **Frontend** status checks before merging.
+These repository settings must be configured separately from the workflow file.
+Deployment is not part of this validation workflow.
+
 ## Troubleshooting
 
 | Symptom | Fix |
