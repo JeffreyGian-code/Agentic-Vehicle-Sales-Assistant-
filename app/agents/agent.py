@@ -26,7 +26,6 @@ agent = create_agent(
     middleware=[
         ModelCallLimitMiddleware(
             run_limit=5,
-            thread_limit=7,
             exit_behavior="error",
         )
     ],

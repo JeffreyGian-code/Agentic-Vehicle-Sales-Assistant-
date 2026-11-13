@@ -35,6 +35,7 @@ export async function sendMessage(
   onProgress?: (progress: ChatProgress) => void,
   onStarted?: (sessionId: string) => void,
   onDelta?: (delta: ChatDelta) => void,
+  resetContext = false,
 ): Promise<ChatResponse> {
   if (USE_MOCK) {
     onProgress?.({ phase: 'processing', label: 'Waiting for simulated response…' })
@@ -66,7 +67,7 @@ export async function sendMessage(
       res = await fetch(`${API_URL}/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message.trim(), session_id: sessionId ?? null }),
+        body: JSON.stringify({ message: message.trim(), session_id: sessionId ?? null, reset_context: resetContext }),
         signal: controller.signal,
       })
     } catch (err) {
@@ -127,6 +128,18 @@ export async function sendMessage(
 export interface ServiceCheck {
   status: 'ok' | 'unavailable' | 'unknown'
   detail: string
+}
+
+export interface ChatUsage {
+  calls: number
+  limit: number
+  resets_at: number | null
+}
+
+export async function getChatUsage(sessionId: string): Promise<ChatUsage> {
+  const res = await fetch(`${API_URL}/chat/usage/${encodeURIComponent(sessionId)}`, { signal: AbortSignal.timeout(12_000) })
+  if (!res.ok) throw new Error('Could not check usage')
+  return res.json()
 }
 
 export interface ServiceHealth {

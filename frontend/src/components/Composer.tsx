@@ -15,15 +15,17 @@ interface Props {
   onStop: () => void
   pending: boolean
   cooldown: number
+  budgetExhausted: boolean
+  budgetResetsAt: number | null
   inputRef: RefObject<HTMLTextAreaElement | null>
 }
 
-export function Composer({ value, onChange, onSend, onStop, pending, cooldown, inputRef }: Props) {
+export function Composer({ value, onChange, onSend, onStop, pending, cooldown, budgetExhausted, budgetResetsAt, inputRef }: Props) {
   const [calcOpen, setCalcOpen] = useState(false)
   const trimmed = value.trim()
   const length = value.length
   const tooLong = length > MAX_MESSAGE_LENGTH
-  const blocked = pending || cooldown > 0
+  const blocked = pending || cooldown > 0 || budgetExhausted
   const canSend = !!trimmed && !tooLong && !blocked
 
   // Auto-grow the textarea.
@@ -49,6 +51,11 @@ export function Composer({ value, onChange, onSend, onStop, pending, cooldown, i
   return (
     <div className="px-3 pb-4 sm:px-6">
       <div className="relative mx-auto max-w-3xl">
+        {budgetExhausted && (
+          <p role="status" className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
+            You’ve used all 7 calls.{budgetResetsAt ? ` Your budget renews ${new Date(budgetResetsAt * 1000).toLocaleString()}.` : ''} Resetting the conversation keeps this limit.
+          </p>
+        )}
         <AnimatePresence>
           {calcOpen && (
             <EmiQuickCalc

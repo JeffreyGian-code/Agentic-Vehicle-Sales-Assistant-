@@ -25,6 +25,7 @@ export interface Message {
 }
 
 export interface Conversation {
+  resetContext?: boolean
   traces?: TraceRun[]
   id: string
   title: string

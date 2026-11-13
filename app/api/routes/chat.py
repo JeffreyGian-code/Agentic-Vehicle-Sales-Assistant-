@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import get_agent
+from app.api.chat_usage import session_usage
 from app.api.rate_limit import CHAT_LIMIT, limiter
 from app.api.schemas import ChatProgress, ChatRequest, ChatResponse
 
@@ -18,6 +19,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 FALLBACK_REPLY = "I was unable to generate a response."
+
+
+@router.get("/usage/{session_id}")
+def usage(session_id: str):
+    return {key: value for key, value in session_usage(session_id).items() if key != "thread_id"}
 
 
 def _message_text(message: Any) -> str:
@@ -45,11 +51,12 @@ def chat(
     agent: Annotated[Any, Depends(get_agent)],
 ) -> ChatResponse:
     session_id = body.session_id or str(uuid.uuid4())
+    budget = session_usage(session_id, consume=True, reset_context=body.reset_context)
 
     try:
         result = agent.invoke(
             {"messages": [{"role": "user", "content": body.message}]},
-            config={"configurable": {"thread_id": session_id}},
+            config={"configurable": {"thread_id": budget["thread_id"]}},
         )
     except Exception as exc:
         if "Model call limits exceeded" in str(exc):
@@ -117,6 +124,7 @@ async def stream_chat(
     agent: Annotated[Any, Depends(get_agent)],
 ) -> StreamingResponse:
     session_id = body.session_id or str(uuid.uuid4())
+    budget = session_usage(session_id, consume=True, reset_context=body.reset_context)
 
     async def events():
         # One queue and task per request: no callbacks or status shared across users.
@@ -128,7 +136,7 @@ async def stream_chat(
                 tool_starts: dict[str, float] = {}
                 async for event in agent.astream_events(
                     {"messages": [{"role": "user", "content": body.message}]},
-                    config={"configurable": {"thread_id": session_id}},
+                    config={"configurable": {"thread_id": budget["thread_id"]}},
                     version="v2",
                 ):
                     kind = event["event"]

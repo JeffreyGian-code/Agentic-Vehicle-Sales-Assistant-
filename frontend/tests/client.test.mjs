@@ -17,6 +17,14 @@ const client = compile('../src/api/client.ts')
 const { sendMessage } = await import(asModule(client))
 const frame = (event, payload) => `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`
 
+test('reset keeps the session identity and requests fresh context', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    assert.deepEqual(JSON.parse(options.body), { message: 'Hello', session_id: 'same-session', reset_context: true })
+    return stream(frame('completed', { session_id: 'same-session', reply: 'Fresh start' }))
+  })
+  await sendMessage('Hello', 'same-session', undefined, undefined, undefined, undefined, true)
+})
+
 function stream(text) {
   const bytes = new TextEncoder().encode(text)
   return new Response(new ReadableStream({

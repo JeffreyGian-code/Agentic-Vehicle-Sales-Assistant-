@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { checkHealth, type ServiceHealth } from '../api/client'
 
 export type HealthStatus = 'unchecked' | 'checking' | 'online' | 'offline' | 'degraded'
@@ -7,7 +7,19 @@ export function useHealth() {
   const [status, setStatus] = useState<HealthStatus>('unchecked')
   const [services, setServices] = useState<ServiceHealth | null>(null)
   const [checkedAt, setCheckedAt] = useState<string | null>(null)
+  const [secondsRemaining, setSecondsRemaining] = useState(5)
   const running = useRef(false)
+
+  const dismiss = useCallback(() => setServices(null), [])
+  useEffect(() => {
+    if (!services) return
+    const timer = setTimeout(dismiss, 5000)
+    const countdown = setInterval(() => setSecondsRemaining((seconds) => Math.max(1, seconds - 1)), 1000)
+    return () => {
+      clearTimeout(timer)
+      clearInterval(countdown)
+    }
+  }, [services, dismiss])
 
   const refresh = useCallback(async () => {
     if (running.current) return
@@ -26,10 +38,11 @@ export function useHealth() {
         ai: { status: 'unknown', detail: 'Could not check through the API.' },
       })
     } finally {
+      setSecondsRemaining(5)
       setCheckedAt(new Date().toLocaleTimeString())
       running.current = false
     }
   }, [])
 
-  return { status, services, checkedAt, refresh }
+  return { status, services, checkedAt, secondsRemaining, refresh, dismiss }
 }

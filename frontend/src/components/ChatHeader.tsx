@@ -1,4 +1,4 @@
-import { Menu, Monitor, Moon, RefreshCw, Sun } from 'lucide-react'
+import { Menu, Monitor, Moon, RefreshCw, RotateCcw, StickyNote, Sun } from 'lucide-react'
 import { USE_MOCK } from '../api/client'
 import type { HealthStatus } from '../hooks/useHealth'
 import type { Theme } from '../hooks/useTheme'
@@ -12,13 +12,19 @@ interface Props {
   theme: Theme
   onCycleTheme: () => void
   onOpenSidebar: () => void
+  onReset: () => void
+  onToggleNote: () => void
+  noteOpen: boolean
+  pending: boolean
+  calls: number
+  callLimit: number
 }
 
-export function ChatHeader({ conversation, health, onRefreshHealth, theme, onCycleTheme, onOpenSidebar }: Props) {
+export function ChatHeader({ conversation, health, onRefreshHealth, theme, onCycleTheme, onOpenSidebar, onReset, onToggleNote, noteOpen, pending, calls, callLimit }: Props) {
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/70 px-3 backdrop-blur sm:px-5 dark:border-slate-800 dark:bg-slate-900/50">
+    <header className="relative flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white/70 px-3 py-2 backdrop-blur sm:px-5 dark:border-slate-800 dark:bg-slate-900/50">
       <button
         onClick={onOpenSidebar}
         className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden dark:text-slate-300 dark:hover:bg-slate-800"
@@ -27,10 +33,19 @@ export function ChatHeader({ conversation, health, onRefreshHealth, theme, onCyc
         <Menu className="size-5" />
       </button>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-28 flex-1">
         <h1 className="truncate text-sm font-semibold sm:text-base">{conversation?.title ?? 'Your vehicle assistant'}</h1>
-        <p className="text-[11px] text-slate-500">One conversation ? Live execution dashboard</p>
+        <p className="text-[11px] text-slate-500" aria-live="polite">{calls}/{callLimit} calls used · Renews every 24 hours</p>
       </div>
+
+      <button type="button" onClick={onReset} disabled={pending} title="Clear conversation context. Your call count and limits stay the same."
+        className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-800">
+        <RotateCcw className="size-3.5" /> Reset conversation
+      </button>
+      <button type="button" onClick={onToggleNote} aria-expanded={noteOpen} aria-controls="developer-note"
+        className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+        <StickyNote className="size-3.5" /> Note
+      </button>
 
       {USE_MOCK && (
         <span className="hidden rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 sm:inline dark:bg-amber-500/15 dark:text-amber-300">
