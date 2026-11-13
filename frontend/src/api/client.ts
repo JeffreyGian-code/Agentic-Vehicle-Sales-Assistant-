@@ -73,19 +73,37 @@ export async function sendMessage(
   }
 }
 
-/** GET /api/health. Resolves true when the API answers {"status": "ok"}. */
-export async function checkHealth(): Promise<boolean> {
-  if (USE_MOCK) return mockHealth()
+export interface ServiceCheck {
+  status: 'ok' | 'unavailable' | 'unknown'
+  detail: string
+}
+
+export interface ServiceHealth {
+  api: ServiceCheck
+  database: ServiceCheck
+  ai: ServiceCheck
+}
+
+/** Manual connectivity checks; never invokes the chat model. */
+export async function checkHealth(): Promise<ServiceHealth> {
+  if (USE_MOCK) {
+    await mockHealth()
+    const mocked: ServiceCheck = { status: 'ok', detail: 'Simulated result (mock mode).' }
+    return { api: mocked, database: mocked, ai: mocked }
+  }
   const controller = new AbortController()
-  const t = setTimeout(() => controller.abort(), 5_000)
+  const timeout = setTimeout(() => controller.abort(), 12_000)
   try {
-    const res = await fetch(`${API_URL}/health`, { signal: controller.signal })
-    if (!res.ok) return false
-    const body = (await res.json()) as { status?: string }
-    return body.status === 'ok'
-  } catch {
-    return false
+    const res = await fetch(`${API_URL}/health/services`, { signal: controller.signal })
+    if (!res.ok) throw new Error(`Status check returned HTTP ${res.status}`)
+    const body = await res.json() as ServiceHealth
+    for (const name of ['api', 'database', 'ai'] as const) {
+      if (!body[name] || !['ok', 'unavailable', 'unknown'].includes(body[name].status) || typeof body[name].detail !== 'string') {
+        throw new Error('Invalid status response')
+      }
+    }
+    return body
   } finally {
-    clearTimeout(t)
+    clearTimeout(timeout)
   }
 }

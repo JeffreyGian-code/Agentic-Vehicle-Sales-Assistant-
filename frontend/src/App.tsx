@@ -96,6 +96,20 @@ export default function App() {
           />
 
           <AnimatePresence>
+            {health.services && (
+              <div className="relative border-b border-slate-200 px-4 py-2 text-xs dark:border-slate-800" aria-live="polite">
+                <p className="mb-1 text-slate-500">Last checked at {health.checkedAt}. Click the status button to check again.</p>
+                {(['api', 'database', 'ai'] as const).map((name) => {
+                  const check = health.services![name]
+                  return (
+                    <p key={name} className={check.status === 'ok' ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}>
+                      <strong>{name === 'api' ? 'API' : name === 'ai' ? 'AI provider' : 'Database'}:</strong> {check.detail}
+                    </p>
+                  )
+                })}
+                <p className="mt-1 text-slate-500">AI check verifies provider access; model generation is not tested.</p>
+              </div>
+            )}
             {health.status === 'offline' && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
@@ -106,7 +120,7 @@ export default function App() {
                 <div className="flex items-center justify-center gap-2 bg-red-50 px-4 py-2 text-xs text-red-700 dark:bg-red-500/10 dark:text-red-300">
                   <WifiOff className="size-3.5 shrink-0" />
                   <span>
-                    Can&apos;t reach the API at <code className="font-mono">{API_URL}</code>. Is the backend running?
+                    Can&apos;t complete the status check at <code className="font-mono">{API_URL}</code>. Try again shortly or check the backend.
                   </span>
                   <button onClick={health.refresh} className="font-semibold underline underline-offset-2">
                     Retry

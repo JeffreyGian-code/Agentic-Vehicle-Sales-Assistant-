@@ -38,7 +38,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Only two public routes. Vehicle search/details and EMI are agent tools,
+    # Chat and health routes. Vehicle search/details and EMI are agent tools,
     # reached through /api/chat, not separate endpoints.
     for router in (health.router, chat.router):
         app.include_router(router, prefix="/api")

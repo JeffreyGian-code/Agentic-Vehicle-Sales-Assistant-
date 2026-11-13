@@ -36,7 +36,7 @@ supports trigger words to test error states: `/429` (IP rate limit), `/limit` (c
 - EMI quick calculator with sliders and a live estimate that can send the question to the assistant
 - "Replies left" meter, plus a conversation-limit flow that can re-ask the last question in a new chat
 - 60 s cooldown with a countdown after a per-IP `429`; Retry on server, network and timeout errors
-- API health indicator (polls `/api/health`) and offline banner
+- Manual service status button (calls `/api/health/services` when clicked), showing API, database and AI provider checks with the last-checked time. No automatic polling. AI checks provider connectivity and credentials, not model generation.
 - Light / dark / system theme; responsive with a mobile drawer
 
 Keyboard: `Enter` send · `Shift+Enter` new line · `Ctrl/Cmd+K` new chat · `/` focus input · `Esc` stop.

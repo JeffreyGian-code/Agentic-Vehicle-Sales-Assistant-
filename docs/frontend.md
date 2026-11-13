@@ -41,7 +41,15 @@ structured car data.
 { "status": "ok" }
 ```
 
-Not rate limited. Use it to show "service online/offline".
+Not rate limited. Lightweight API liveness only; does not check dependencies.
+
+### `GET /api/health/services`
+
+Called only by the manual service status button. Limited to 6 requests per minute per IP.
+Returns separate `api`, `database`, and `ai` objects, each with `status` and a safe `detail` message.
+Database runs `SELECT 1` with connection and statement timeouts. AI verifies the OpenRouter key via `/api/v1/key`; it does not generate text or prove model availability.
+Dependency failures return HTTP 200 with `unavailable` for the affected service. The UI shows the last-check time; failed status requests leave dependency status unknown.
+
 
 ### `POST /api/chat`
 

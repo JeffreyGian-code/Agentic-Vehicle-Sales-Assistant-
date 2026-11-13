@@ -41,8 +41,9 @@ export function ChatHeader({ conversation, health, onRefreshHealth, theme, onCyc
 
       <button
         onClick={onRefreshHealth}
+        disabled={health === 'checking'}
         className="group flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-        title="Check API status"
+        title="Check API, database and AI provider status"
       >
         <span className="relative flex size-2">
           {health === 'online' && (
@@ -53,12 +54,13 @@ export function ChatHeader({ conversation, health, onRefreshHealth, theme, onCyc
               'relative inline-flex size-2 rounded-full',
               health === 'online' && 'bg-emerald-500',
               health === 'offline' && 'bg-red-500',
-              health === 'checking' && 'bg-amber-400',
+              (health === 'checking' || health === 'degraded') && 'bg-amber-400',
+              health === 'unchecked' && 'bg-slate-400',
             )}
           />
         </span>
         <span className="hidden sm:inline">
-          {health === 'online' ? 'Online' : health === 'offline' ? 'Offline' : 'Checking'}
+          {health === 'online' ? 'Checks passed' : health === 'offline' ? 'Check failed' : health === 'degraded' ? 'Service issue' : health === 'checking' ? 'Checking' : 'Check services'}
         </span>
         <RefreshCw className={cn('size-3 text-slate-400 transition group-hover:rotate-180', health === 'checking' && 'animate-spin')} />
       </button>
