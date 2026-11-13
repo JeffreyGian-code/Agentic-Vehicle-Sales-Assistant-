@@ -1,4 +1,15 @@
-import type { ChatErrorKind } from '../api/types'
+import type { ChatErrorKind, ChatProgress } from '../api/types'
+
+export interface TraceRun {
+  id: string
+  input: string
+  startedAt: number
+  finishedAt?: number
+  status: 'running' | 'completed' | 'error' | 'cancelled'
+  steps: (ChatProgress & { id: string; timestamp: number })[]
+  reply?: string
+  error?: string
+}
 
 export type MessageRole = 'user' | 'assistant' | 'error'
 
@@ -14,6 +25,8 @@ export interface Message {
 }
 
 export interface Conversation {
+  resetContext?: boolean
+  traces?: TraceRun[]
   id: string
   title: string
   /** Backend session id; null until the first successful reply */
@@ -21,8 +34,8 @@ export interface Conversation {
   messages: Message[]
   createdAt: number
   updatedAt: number
-  /** True once the backend reported the per-conversation limit */
+  /** Legacy field retained for saved transcripts. New requests do not end a conversation. */
   ended: boolean
-  /** Number of successful assistant replies (used for the "replies left" hint) */
+  /** Number of successful assistant replies. */
   replies: number
 }

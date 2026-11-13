@@ -1,51 +1,32 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Car, Check, MessageSquare, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import type { Conversation } from '../lib/types'
-import { cn, formatDay } from '../lib/utils'
+import { Activity, Car, CheckCircle2, ChevronRight, CircleDashed, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import type { PendingRequest } from '../hooks/useChat'
+import type { Conversation, TraceRun } from '../lib/types'
+import { cn, formatTime } from '../lib/utils'
+import { Markdown } from './MessageBubble'
+import { formatDuration, stepTiming } from '../lib/traceTiming'
 
 interface Props {
-  conversations: Conversation[]
-  activeId: string | null
-  pendingId: string | null
+  conversation: Conversation | null
+  pending: PendingRequest | null
   open: boolean
   onClose: () => void
-  onSelect: (id: string) => void
-  onNew: () => void
-  onDelete: (id: string) => void
-  onRename: (id: string, title: string) => void
-  onClearAll: () => void
 }
 
 export function Sidebar(props: Props) {
-  const { open, onClose } = props
   return (
     <>
-      {/* Desktop */}
-      <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white/70 backdrop-blur md:flex md:flex-col dark:border-slate-800 dark:bg-slate-900/60">
-        <SidebarContent {...props} />
+      <aside className="hidden w-96 shrink-0 border-r border-slate-200 bg-white/70 backdrop-blur md:flex md:flex-col dark:border-slate-800 dark:bg-slate-900/60">
+        <Dashboard {...props} />
       </aside>
-
-      {/* Mobile drawer */}
       <AnimatePresence>
-        {open && (
+        {props.open && (
           <motion.div className="fixed inset-0 z-40 md:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={onClose} />
-            <motion.aside
-              className="absolute inset-y-0 left-0 flex w-[85%] max-w-xs flex-col bg-white shadow-2xl dark:bg-slate-900"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-            >
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                aria-label="Close sidebar"
-              >
-                <X className="size-5" />
-              </button>
-              <SidebarContent {...props} />
+            <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={props.onClose} />
+            <motion.aside className="absolute inset-y-0 left-0 flex w-[92%] max-w-sm flex-col bg-white shadow-2xl dark:bg-slate-900" initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}>
+              <button onClick={props.onClose} className="absolute top-4 right-3 z-10 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close execution dashboard"><X className="size-5" /></button>
+              <Dashboard {...props} />
             </motion.aside>
           </motion.div>
         )}
@@ -54,252 +35,69 @@ export function Sidebar(props: Props) {
   )
 }
 
-function SidebarContent({
-  conversations,
-  activeId,
-  pendingId,
-  onSelect,
-  onNew,
-  onDelete,
-  onRename,
-  onClearAll,
-  onClose,
-}: Props) {
-  const [query, setQuery] = useState('')
-  const [confirmClear, setConfirmClear] = useState(false)
-
-  const groups = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const filtered = [...conversations]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .filter(
-        (c) =>
-          !q ||
-          c.title.toLowerCase().includes(q) ||
-          c.messages.some((m) => m.content.toLowerCase().includes(q)),
-      )
-    const map = new Map<string, Conversation[]>()
-    for (const c of filtered) {
-      const key = formatDay(c.updatedAt)
-      map.set(key, [...(map.get(key) ?? []), c])
-    }
-    return [...map.entries()]
-  }, [conversations, query])
-
+function Dashboard({ conversation, pending }: Props) {
+  const runs = conversation?.traces ?? []
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
-        <div className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 text-white shadow-lg shadow-brand-500/30">
-          <Car className="size-5" />
-        </div>
-        <div className="leading-tight">
-          <p className="text-sm font-semibold">AutoAssist</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Vehicle Sales Assistant</p>
-        </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center gap-2.5 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+        <div className="grid size-9 place-items-center rounded-xl bg-brand-600 text-white"><Car className="size-5" /></div>
+        <div><p className="text-sm font-semibold">AutoAssist</p><p className="text-xs text-slate-500">Vehicle Sales Assistant</p></div>
       </div>
-
-      <div className="space-y-2 px-3">
-        <button
-          onClick={() => {
-            onNew()
-            onClose()
-          }}
-          className="group flex w-full items-center justify-between rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-medium text-white shadow-md shadow-brand-600/25 transition hover:bg-brand-500 active:scale-[0.98]"
-        >
-          <span className="flex items-center gap-2">
-            <Plus className="size-4 transition group-hover:rotate-90" /> New chat
-          </span>
-          <kbd className="rounded bg-white/15 px-1.5 py-0.5 font-sans text-[10px] tracking-wide">Ctrl K</kbd>
-        </button>
-
-        <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800/60">
-          <Search className="size-4 text-slate-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search chats"
-            className="w-full bg-transparent outline-none placeholder:text-slate-400"
-          />
-          {query && (
-            <button onClick={() => setQuery('')} aria-label="Clear search" className="text-slate-400 hover:text-slate-600">
-              <X className="size-3.5" />
-            </button>
-          )}
-        </label>
+      <div className="px-4 pt-5 pb-3">
+        <h2 className="flex items-center gap-2 text-sm font-semibold"><Activity className="size-4 text-brand-500" /> Execution dashboard</h2>
+        <p className="mt-1 text-xs leading-relaxed text-slate-500">Follow each query from input to final response.</p>
+        <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500"><span>{runs.length} {runs.length === 1 ? 'run' : 'runs'}</span><span role="status" className={pending ? 'text-brand-600 dark:text-brand-300' : ''}>{pending ? 'Running' : 'Ready'}</span></div>
       </div>
-
-      <nav className="mt-3 flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversations">
-        {groups.length === 0 && (
-          <div className="mt-10 px-4 text-center text-sm text-slate-500 dark:text-slate-400">
-            <MessageSquare className="mx-auto mb-2 size-6 opacity-50" />
-            {query ? 'No chats match your search.' : 'Your conversations will appear here.'}
-          </div>
-        )}
-        {groups.map(([day, items]) => (
-          <div key={day} className="mb-3">
-            <p className="px-3 py-1.5 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">{day}</p>
-            <ul className="space-y-0.5">
-              <AnimatePresence initial={false}>
-                {items.map((c) => (
-                  <ConversationItem
-                    key={c.id}
-                    conversation={c}
-                    active={c.id === activeId}
-                    pending={c.id === pendingId}
-                    onSelect={() => {
-                      onSelect(c.id)
-                      onClose()
-                    }}
-                    onDelete={() => onDelete(c.id)}
-                    onRename={(t) => onRename(c.id, t)}
-                  />
-                ))}
-              </AnimatePresence>
-            </ul>
-          </div>
-        ))}
-      </nav>
-
-      {conversations.length > 0 && (
-        <div className="border-t border-slate-200 p-3 dark:border-slate-800">
-          {confirmClear ? (
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="text-slate-500">Delete all chats?</span>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => {
-                    onClearAll()
-                    setConfirmClear(false)
-                  }}
-                  className="rounded-lg bg-red-600 px-2.5 py-1 font-medium text-white hover:bg-red-500"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => setConfirmClear(false)}
-                  className="rounded-lg px-2.5 py-1 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmClear(true)}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
-            >
-              <Trash2 className="size-3.5" /> Clear all conversations
-            </button>
-          )}
-        </div>
-      )}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 pb-4" aria-label="Execution runs">
+        {runs.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center dark:border-slate-700"><Activity className="mx-auto mb-3 size-6 text-slate-400" /><p className="text-sm font-medium">Your system activity appears here</p><p className="mt-2 text-xs leading-relaxed text-slate-500">Send a message to see extracted data, tool calls, results, and the assistant&apos;s response.</p>{!!conversation?.messages.length && <p className="mt-2 text-xs text-slate-500">Execution details are available for new messages.</p>}</div>}
+        {[...runs].reverse().map((run, index) => <Run key={run.id} run={run} number={runs.length - index} reply={run.status === 'running' ? pending?.reply : undefined} />)}
+      </div>
     </div>
   )
 }
 
-function ConversationItem({
-  conversation: c,
-  active,
-  pending,
-  onSelect,
-  onDelete,
-  onRename,
-}: {
-  conversation: Conversation
-  active: boolean
-  pending: boolean
-  onSelect: () => void
-  onDelete: () => void
-  onRename: (title: string) => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(c.title)
-  const [confirm, setConfirm] = useState(false)
+function Payload({ value }: { value: unknown }) {
+  return <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-slate-100 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words dark:bg-slate-950/60">{typeof value === 'string' ? value : JSON.stringify(value, null, 2)}</pre>
+}
 
-  const commit = () => {
-    onRename(draft)
-    setEditing(false)
-  }
-
+function Run({ run, number, reply }: { run: TraceRun; number: number; reply?: string }) {
+  const running = run.status === 'running'
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    if (!running) return
+    const timer = window.setInterval(() => setNow(Date.now()), 100)
+    return () => window.clearInterval(timer)
+  }, [running])
   return (
-    <motion.li
-      layout
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, height: 0 }}
-      className={cn(
-        'group relative flex items-center rounded-lg text-sm transition',
-        active
-          ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300'
-          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/70',
-      )}
-    >
-      {active && <motion.span layoutId="active-pill" className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-brand-500" />}
-      {editing ? (
-        <form
-          className="flex w-full items-center gap-1 px-2 py-1.5"
-          onSubmit={(e) => {
-            e.preventDefault()
-            commit()
-          }}
-        >
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => e.key === 'Escape' && setEditing(false)}
-            className="w-full rounded-md border border-brand-500 bg-white px-2 py-1 text-sm outline-none dark:bg-slate-900"
-          />
-          <button type="submit" className="p-1 text-brand-600" aria-label="Save title">
-            <Check className="size-4" />
-          </button>
-        </form>
-      ) : (
-        <>
-          <button onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 py-2 pr-1 pl-3 text-left" title={c.title}>
-            {pending ? (
-              <span className="relative flex size-2 shrink-0">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-brand-500" />
-              </span>
-            ) : (
-              <MessageSquare className={cn('size-3.5 shrink-0', c.ended ? 'opacity-30' : 'opacity-60')} />
-            )}
-            <span className={cn('truncate', c.ended && 'opacity-60')}>{c.title}</span>
-          </button>
-          {confirm ? (
-            <div className="flex shrink-0 items-center gap-0.5 pr-1">
-              <button onClick={onDelete} className="rounded-md bg-red-600 px-1.5 py-0.5 text-[11px] font-medium text-white" aria-label="Confirm delete">
-                Delete
-              </button>
-              <button onClick={() => setConfirm(false)} className="rounded-md p-1 text-slate-400 hover:text-slate-600" aria-label="Cancel delete">
-                <X className="size-3.5" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex shrink-0 items-center pr-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 max-md:opacity-100">
-              <button
-                onClick={() => {
-                  setDraft(c.title)
-                  setEditing(true)
-                }}
-                className="rounded-md p-1.5 text-slate-400 hover:bg-white hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                aria-label="Rename chat"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-              <button
-                onClick={() => setConfirm(true)}
-                className="rounded-md p-1.5 text-slate-400 hover:bg-white hover:text-red-600 dark:hover:bg-slate-700"
-                aria-label="Delete chat"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </motion.li>
+    <details open className="group/run rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-3 text-xs">
+        <ChevronRight className="size-3.5 shrink-0 transition group-open/run:rotate-90" />
+        {running ? <CircleDashed className="size-4 shrink-0 animate-spin text-brand-500" /> : <CheckCircle2 className={cn('size-4 shrink-0', run.status === 'completed' ? 'text-emerald-500' : 'text-amber-500')} />}
+        <span className="min-w-0 flex-1"><span className="font-semibold">Run {number}</span><span className="ml-2 text-slate-500">{formatTime(run.startedAt)}</span></span>
+        <span className="text-[10px] text-slate-500">{running ? 'Running' : run.status === 'completed' ? `${((run.finishedAt! - run.startedAt) / 1000).toFixed(1)}s` : run.status}</span>
+      </summary>
+      <div className="space-y-3 border-t border-slate-100 px-3 py-3 dark:border-slate-800">
+        <div><p className="text-[11px] font-semibold text-brand-600 dark:text-brand-300">User input:</p><p className="mt-1 text-xs whitespace-pre-wrap break-words">{run.input}</p></div>
+        <ol className="ml-1 space-y-3 border-l border-slate-200 pl-3 dark:border-slate-700">
+          {run.steps.map((step, index) => {
+            const timing = stepTiming(run, index, now)
+            return (
+            <li key={step.id} className="text-xs">
+              <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                <span>{formatTime(step.timestamp)}</span>
+                <span className="tabular-nums" title={step.tool ? 'Tool execution time' : 'Time spent in this phase'}>
+                  {timing.duration == null ? 'Timing unavailable' : `${formatDuration(timing.duration)}${timing.running ? ' elapsed' : ''}`}
+                </span>
+              </div>
+              <p className={cn('mt-0.5 font-medium', step.phase === 'tool_failed' && 'text-amber-600')}>{step.tool ? `${step.phase === 'tool_started' ? 'Tool called' : step.phase === 'tool_failed' ? 'Tool failed' : 'Tool result'}: ${step.tool}` : step.label}</p>
+              {step.phase === 'tool_started' && <details className="mt-1"><summary className="cursor-pointer text-slate-500">Extracted data / tool input:</summary>{step.input == null ? <p className="mt-1 text-slate-500">No arguments provided.</p> : <Payload value={step.input} />}</details>}
+              {(step.phase === 'tool_finished' || step.phase === 'tool_failed') && <details className="mt-1"><summary className="cursor-pointer text-slate-500">View tool result</summary>{step.output == null ? <p className="mt-1 text-slate-500">No result returned.</p> : <Payload value={step.output} />}</details>}
+            </li>
+          )})}
+        </ol>
+        {(run.reply || reply) && <details open><summary className="cursor-pointer text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{running ? 'Generating response:' : 'Final LLM response:'}</summary><div className="mt-2 max-h-96 overflow-auto break-words"><Markdown text={run.reply ?? reply ?? ''} /></div></details>}
+        {run.error && <p role="status" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">{run.error}</p>}
+      </div>
+    </details>
   )
 }

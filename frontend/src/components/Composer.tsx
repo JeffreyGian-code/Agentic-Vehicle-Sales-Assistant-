@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowUp, Calculator, Clock, Sparkles, Square } from 'lucide-react'
+import { ArrowUp, Calculator, Clock, Square } from 'lucide-react'
 import { useEffect, useState, type RefObject } from 'react'
 import { MAX_MESSAGE_LENGTH } from '../api/types'
 import { IP_COOLDOWN_SECONDS } from '../hooks/useChat'
@@ -13,19 +13,19 @@ interface Props {
   onChange: (v: string) => void
   onSend: (text: string) => void
   onStop: () => void
-  onNewChat: () => void
   pending: boolean
   cooldown: number
-  ended: boolean
+  budgetExhausted: boolean
+  budgetResetsAt: number | null
   inputRef: RefObject<HTMLTextAreaElement | null>
 }
 
-export function Composer({ value, onChange, onSend, onStop, onNewChat, pending, cooldown, ended, inputRef }: Props) {
+export function Composer({ value, onChange, onSend, onStop, pending, cooldown, budgetExhausted, budgetResetsAt, inputRef }: Props) {
   const [calcOpen, setCalcOpen] = useState(false)
   const trimmed = value.trim()
   const length = value.length
   const tooLong = length > MAX_MESSAGE_LENGTH
-  const blocked = pending || cooldown > 0
+  const blocked = pending || cooldown > 0 || budgetExhausted
   const canSend = !!trimmed && !tooLong && !blocked
 
   // Auto-grow the textarea.
@@ -47,35 +47,15 @@ export function Composer({ value, onChange, onSend, onStop, onNewChat, pending, 
     inputRef.current?.focus()
   }
 
-  if (ended) {
-    return (
-      <div className="px-3 pb-4 sm:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center sm:flex-row sm:text-left dark:border-amber-500/30 dark:bg-amber-500/10"
-        >
-          <Sparkles className="size-6 shrink-0 text-amber-500" />
-          <div className="flex-1 text-sm">
-            <p className="font-semibold text-amber-900 dark:text-amber-100">This conversation has reached its limit</p>
-            <p className="text-amber-800/80 dark:text-amber-200/70">
-              Start a new chat to keep going. Your history here stays available to read.
-            </p>
-          </div>
-          <button
-            onClick={onNewChat}
-            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-brand-500 active:scale-95"
-          >
-            Start new chat
-          </button>
-        </motion.div>
-      </div>
-    )
-  }
 
   return (
     <div className="px-3 pb-4 sm:px-6">
       <div className="relative mx-auto max-w-3xl">
+        {budgetExhausted && (
+          <p role="status" className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
+            You’ve used all 7 calls.{budgetResetsAt ? ` Your budget renews ${new Date(budgetResetsAt * 1000).toLocaleString()}.` : ''} Resetting the conversation keeps this limit.
+          </p>
+        )}
         <AnimatePresence>
           {calcOpen && (
             <EmiQuickCalc

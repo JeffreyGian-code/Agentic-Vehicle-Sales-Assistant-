@@ -163,28 +163,42 @@ export async function sendMessage(
 - First message: send **no** `session_id`. The API creates one and returns it.
 - Store the returned `session_id` and send it with **every** follow-up
   message. That is how the assistant remembers the conversation.
-- "New chat" button: drop the stored `session_id`.
+- Keep one conversation and reuse its `session_id` for every query. There are no
+  conversation switching, deletion, or new-chat controls. The current browser's
+  selected legacy conversation is migrated without deleting the legacy storage.
 - The server only keeps history in memory. It is lost when the API restarts,
   and the server has no endpoint to fetch past messages. **Keep the transcript
   in the frontend** for display (state, or `localStorage` if you want it to
   survive a page reload).
 
-## 5. Conversation length limit (important)
+## 5. Processing limit and execution dashboard
 
-The agent allows at most **5 LLM calls per conversation** (`thread_limit=5` in
-`app/agents/agent.py`). A plain answer costs 1 call; an answer that searches
-vehicles or calculates EMI costs 2 or more. In practice a conversation lasts
-about **2 to 3 user messages**.
+The agent allows at most **5 LLM calls per request** (`run_limit=5` in
+`app/agents/agent.py`). There is no lifetime conversation call limit.
 
-After that, every message in the same session returns `429` with:
+An individual request exceeding this limit returns `429` with:
 
 ```text
-The processing limit for this conversation was reached. Please start a new conversation.
+The processing limit for this request was reached. Please try a simpler query in this conversation.
 ```
 
-The UI should show this message and offer (or automatically start) a new
-conversation by clearing `session_id`. Resending with the same `session_id`
-will keep failing.
+Keep the session and allow the user to send a simpler query.
+
+The left panel displays an execution run for each query. It records user input,
+ordered progress events, expandable tool inputs and outputs, timestamps, elapsed
+time, errors/cancellation, and the final LLM response also shown in chat.
+Each processing/writing phase also shows its duration from the received event
+timestamps. Tool duration is measured on the server with a monotonic clock and
+included as `duration_ms` on tool completion/failure; overlapping tools are
+matched by run ID. Live timers stop when the phase or request finishes. Saved
+traces without server timing fall back to their recorded event timestamps.
+`tool_started` progress events include `input`; `tool_finished` events include
+`output`. Tool arguments are the actual extracted data used by the agent;
+queries requiring no tools do not invent extracted fields. Model reasoning and
+provider metadata are not included. Tool failures use a generic error result.
+Runs and chat are saved in browser storage. Interrupted runs are marked cancelled
+after reload. Older messages have no historical execution data. Mock mode labels
+its simulated progress and does not invent tool activity.
 
 ## 6. Errors
 
@@ -192,13 +206,13 @@ will keep failing.
 |--------|----------|-------|-----------------------|
 | `422` | Array of validation errors | Empty message or more than 2000 characters | Validate before sending: trim, block empty, show a character counter |
 | `429` | `"Too many requests from your IP. Please try again later."` | Per-IP limit hit (default `10/minute;100/day`) | Disable send and show a cooldown |
-| `429` | `"The processing limit for this conversation was reached. Please start a new conversation."` | Conversation limit (section 5) | Start a new conversation |
+| `429` | `"The processing limit for this request was reached. Please try a simpler query in this conversation."` | Request processing limit (section 5) | Keep session; try a simpler query |
 | `500` | `"Something went wrong while processing your request."` | LLM, tool or database failure | Show the message with a "Retry" button |
 
 Notes:
 
 - Both limits use status `429`. Tell them apart by the `detail` text, e.g.
-  `detail.includes("new conversation")`.
+  `detail.includes("processing limit")` (legacy new-conversation errors are also recognized).
 - The IP rate-limit response sets a `Retry-After` header (seconds), but the
   browser **cannot read it yet** because the API does not list it in CORS
   `expose_headers`. Until that is added, use a fixed cooldown (e.g. 60 s).
@@ -231,7 +245,7 @@ Notes:
   (MSW, a local JSON server, etc.). Add mocks for the error cases in section 6
   so every UI state can be tested.
 - **Turn off rate limiting locally.** Set `RATE_LIMIT_ENABLED=false` in `.env`
-  and restart the API. The conversation limit (section 5) still applies.
+  and restart the API. The per-request processing limit (section 5) still applies.
 
 ## 9. Known gaps / backend follow-ups
 
@@ -240,6 +254,6 @@ Notes:
 | `Retry-After` not in CORS `expose_headers` | Cannot show an exact cooldown; use a fixed one |
 | No machine-readable error codes | UI has to match on `detail` text |
 | Sessions stored in server memory only | Conversations end when the API restarts; no history endpoint |
-| Short conversation limit (5 LLM calls) | Users will need to start new chats often |
+| No authenticated user identity | The single conversation is per browser; it is not synchronized across devices |
 
 Raise these with the backend team if any of them block the UI.

@@ -11,8 +11,8 @@ interface Props {
   conversation: Conversation
   pending: PendingRequest | null
   cooldown: number
+  budgetExhausted: boolean
   onRetry: (id: string) => void
-  onNewChat: (carryText?: string) => void
   onSuggestion: (text: string) => void
 }
 
@@ -30,7 +30,7 @@ function followUps(reply: Message): string[] {
   return out.slice(0, 3)
 }
 
-export function MessageList({ conversation, pending, cooldown, onRetry, onNewChat, onSuggestion }: Props) {
+export function MessageList({ conversation, pending, cooldown, budgetExhausted, onRetry, onSuggestion }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
   const isPendingHere = pending?.conversationId === conversation.id
@@ -77,8 +77,7 @@ export function MessageList({ conversation, pending, cooldown, onRetry, onNewCha
                 <MessageBubble
                   message={m}
                   onRetry={onRetry}
-                  onNewChat={onNewChat}
-                  canRetry={!pending && i === messages.length - 1}
+                  canRetry={!pending && !budgetExhausted && i === messages.length - 1}
                   cooldown={cooldown}
                 />
               </div>
@@ -109,7 +108,7 @@ export function MessageList({ conversation, pending, cooldown, onRetry, onNewCha
                   transition={{ delay: 0.25 + i * 0.07 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => onSuggestion(s)}
-                  disabled={cooldown > 0}
+                  disabled={cooldown > 0 || budgetExhausted}
                   className="flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50/60 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:border-brand-400 hover:bg-brand-100 disabled:opacity-50 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20"
                 >
                   <CornerDownRight className="size-3" />

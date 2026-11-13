@@ -3,12 +3,14 @@ import asyncio
 import json
 from contextlib import suppress
 import uuid
+from time import perf_counter
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import get_agent
+from app.api.chat_usage import session_usage
 from app.api.rate_limit import CHAT_LIMIT, limiter
 from app.api.schemas import ChatProgress, ChatRequest, ChatResponse
 
@@ -17,6 +19,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 FALLBACK_REPLY = "I was unable to generate a response."
+
+
+@router.get("/usage/{session_id}")
+def usage(session_id: str):
+    return {key: value for key, value in session_usage(session_id).items() if key != "thread_id"}
 
 
 def _message_text(message: Any) -> str:
@@ -44,19 +51,20 @@ def chat(
     agent: Annotated[Any, Depends(get_agent)],
 ) -> ChatResponse:
     session_id = body.session_id or str(uuid.uuid4())
+    budget = session_usage(session_id, consume=True, reset_context=body.reset_context)
 
     try:
         result = agent.invoke(
             {"messages": [{"role": "user", "content": body.message}]},
-            config={"configurable": {"thread_id": session_id}},
+            config={"configurable": {"thread_id": budget["thread_id"]}},
         )
     except Exception as exc:
         if "Model call limits exceeded" in str(exc):
             raise HTTPException(
                 status_code=429,
                 detail=(
-                    "The processing limit for this conversation was "
-                    "reached. Please start a new conversation."
+                    "The processing limit for this request was "
+                    "reached. Please try a simpler query in this conversation."
                 ),
             ) from exc
 
@@ -84,6 +92,21 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+def _trace_value(value: Any) -> Any:
+    """Serialize tool payloads without exposing message metadata or model reasoning."""
+    if hasattr(value, "content"):
+        value = value.content
+    if hasattr(value, "model_dump"):
+        value = value.model_dump(mode="json")
+    if isinstance(value, dict):
+        return {str(key): _trace_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_trace_value(item) for item in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
 class ChatStreamResponse(StreamingResponse):
     async def stream_response(self, send):
         try:
@@ -101,6 +124,7 @@ async def stream_chat(
     agent: Annotated[Any, Depends(get_agent)],
 ) -> StreamingResponse:
     session_id = body.session_id or str(uuid.uuid4())
+    budget = session_usage(session_id, consume=True, reset_context=body.reset_context)
 
     async def events():
         # One queue and task per request: no callbacks or status shared across users.
@@ -109,9 +133,10 @@ async def stream_chat(
         async def produce():
             try:
                 writing = False
+                tool_starts: dict[str, float] = {}
                 async for event in agent.astream_events(
                     {"messages": [{"role": "user", "content": body.message}]},
-                    config={"configurable": {"thread_id": session_id}},
+                    config={"configurable": {"thread_id": budget["thread_id"]}},
                     version="v2",
                 ):
                     kind = event["event"]
@@ -125,15 +150,22 @@ async def stream_chat(
                         writing = False
                         progress = ChatProgress(phase="processing", label="Processing your request…")
                     elif kind == "on_tool_start":
+                        tool_starts[run_id] = perf_counter()
                         progress = ChatProgress(
                             phase="tool_started", label=TOOL_LABELS.get(name, f"Calling {name}…"),
                             run_id=run_id, tool=name,
+                            input=_trace_value(event.get("data", {}).get("input")),
                         )
                     elif kind in {"on_tool_end", "on_tool_error"}:
+                        tool_started = tool_starts.pop(run_id, None)
                         progress = ChatProgress(
                             phase="tool_finished" if kind == "on_tool_end" else "tool_failed",
                             label="Processing tool results…" if kind == "on_tool_end" else "Tool failed; processing the result…",
                             run_id=run_id, tool=name,
+                            duration_ms=(max(0, (perf_counter() - tool_started) * 1000)
+                                         if tool_started is not None else None),
+                            output=(_trace_value(event.get("data", {}).get("output"))
+                                    if kind == "on_tool_end" else "The tool could not complete this step."),
                         )
                     elif kind == "on_chat_model_stream":
                         chunk = event.get("data", {}).get("chunk")
@@ -169,7 +201,7 @@ async def stream_chat(
                 await queue.put(("error", {
                     "status": 429 if limited else 500,
                     "detail": (
-                        "The processing limit for this conversation was reached. Please start a new conversation."
+                        "The processing limit for this request was reached. Please try a simpler query in this conversation."
                         if limited else "Something went wrong while processing your request."
                     ),
                 }))

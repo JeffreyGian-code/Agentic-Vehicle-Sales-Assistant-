@@ -17,6 +17,14 @@ const client = compile('../src/api/client.ts')
 const { sendMessage } = await import(asModule(client))
 const frame = (event, payload) => `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`
 
+test('reset keeps the session identity and requests fresh context', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    assert.deepEqual(JSON.parse(options.body), { message: 'Hello', session_id: 'same-session', reset_context: true })
+    return stream(frame('completed', { session_id: 'same-session', reply: 'Fresh start' }))
+  })
+  await sendMessage('Hello', 'same-session', undefined, undefined, undefined, undefined, true)
+})
+
 function stream(text) {
   const bytes = new TextEncoder().encode(text)
   return new Response(new ReadableStream({
@@ -34,8 +42,8 @@ test('reads fragmented SSE, heartbeats, tool events, Unicode, and final reply', 
   t.mock.method(globalThis, 'fetch', async (url) => {
     assert.match(url, /\/chat\/stream$/)
     return stream(frame('started', { session_id: 'abc' }) + ': heartbeat\n\n' +
-      frame('progress', { phase: 'tool_started', tool: 'calculate_emi', run_id: '1', label: 'Calculating EMI…' }) +
-      frame('progress', { phase: 'tool_finished', tool: 'calculate_emi', run_id: '1', label: 'Processing results…' }) +
+      frame('progress', { phase: 'tool_started', tool: 'calculate_emi', run_id: '1', label: 'Calculating EMI…', input: { principal: 100000 } }) +
+      frame('progress', { phase: 'tool_finished', tool: 'calculate_emi', run_id: '1', label: 'Processing results…', output: { emi: 2500 } }) +
       frame('completed', { session_id: 'abc', reply: 'EMI ₹2,500' }))
   })
   const result = await sendMessage('EMI?', null, undefined, (p) => progress.push(p), (id) => sessions.push(id))
@@ -43,6 +51,8 @@ test('reads fragmented SSE, heartbeats, tool events, Unicode, and final reply', 
   assert.deepEqual(sessions, ['abc'])
   assert.deepEqual(progress.map((p) => p.phase), ['tool_started', 'tool_finished'])
   assert.equal(progress[0].label, 'Calculating EMI…')
+  assert.deepEqual(progress[0].input, { principal: 100000 })
+  assert.deepEqual(progress[1].output, { emi: 2500 })
 })
 
 test('maps streamed conversation-limit errors and HTTP rate limits', async (t) => {

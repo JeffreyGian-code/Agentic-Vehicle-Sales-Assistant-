@@ -162,6 +162,9 @@ Deployment is not part of this validation workflow.
 
 ## Notes on the implementation
 
+- Each browser session gets 7 chat requests per 24-hour window, starting with its first request. Accepted requests count even if generation fails or is cancelled. Reset conversation clears chat context while keeping the session budget and per-IP limits. The header displays calls used.
+- Session budgets persist in `.chat-usage.sqlite3`. Set `CHAT_USAGE_DATABASE` to a writable persistent file path in deployment to retain counts across restarts; servers sharing this file share the budget. Conversation history still uses the agent's in-memory checkpointer.
+- The developer note opens on arrival and can be reopened with **Note**. System status results dismiss on click or after 5 seconds.
 - Queries use SQLAlchemy bound parameters (`:brand`, `:max_price`, …) rather than string interpolation, preventing SQL injection.
 - Connections come from a SQLAlchemy engine with `pool_pre_ping=True` (`app/database.py`) and are released by context managers after each call.
 - Brand, model, vehicle type and price are indexed. Text matching is case-insensitive.
