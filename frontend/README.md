@@ -31,7 +31,7 @@ supports trigger words to test error states: `/429` (IP rate limit), `/limit` (c
 
 - Multiple conversations, saved in `localStorage`, with search, rename and delete
 - Markdown replies (tables, lists) rendered with `react-markdown`; raw HTML is never injected
-- Typing indicator with progress stages and elapsed time; Stop button (or `Esc`) to cancel
+- Live model/tool status over SSE with elapsed time; Stop button (or `Esc`) disconnects and cancels the agent task (an already-running synchronous tool may finish)
 - Contextual follow-up chips after replies, starter cards, quick filter chips
 - EMI quick calculator with sliders and a live estimate that can send the question to the assistant
 - "Replies left" meter, plus a conversation-limit flow that can re-ask the last question in a new chat

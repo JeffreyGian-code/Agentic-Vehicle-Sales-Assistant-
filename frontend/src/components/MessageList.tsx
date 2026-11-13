@@ -86,7 +86,7 @@ export function MessageList({ conversation, pending, cooldown, onRetry, onNewCha
           })}
 
           <AnimatePresence>
-            {isPendingHere && pending && <TypingIndicator key="typing" startedAt={pending.startedAt} text={pending.text} />}
+            {isPendingHere && pending && <TypingIndicator key="typing" startedAt={pending.startedAt} status={pending.status} />}
           </AnimatePresence>
 
           {suggestions.length > 0 && (

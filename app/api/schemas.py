@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Literal
 
 
 class ChatRequest(BaseModel):
@@ -12,4 +13,11 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     session_id: str
+
+
+class ChatProgress(BaseModel):
+    phase: Literal["processing", "tool_started", "tool_finished", "tool_failed", "writing"]
+    label: str
+    run_id: str | None = None
+    tool: str | None = None
 

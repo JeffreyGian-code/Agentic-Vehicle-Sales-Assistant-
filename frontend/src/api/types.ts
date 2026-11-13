@@ -8,6 +8,13 @@ export interface ChatResponse {
   session_id: string
 }
 
+export interface ChatProgress {
+  phase: 'processing' | 'tool_started' | 'tool_finished' | 'tool_failed' | 'writing'
+  label: string
+  run_id?: string | null
+  tool?: string | null
+}
+
 export interface ValidationIssue {
   loc: (string | number)[]
   msg: string

@@ -1,5 +1,5 @@
 import { mockHealth, mockSendMessage } from './mock'
-import { ChatError, type ApiError, type ChatResponse } from './types'
+import { ChatError, type ApiError, type ChatProgress, type ChatResponse } from './types'
 
 export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api').replace(/\/$/, '')
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -25,29 +25,40 @@ function toChatError(status: number, detail: ApiError['detail'] | undefined): Ch
 }
 
 /**
- * POST /api/chat. Throws ChatError for every failure except a caller-initiated abort,
+ * POST /api/chat/stream. Throws ChatError for every failure except a caller-initiated abort,
  * which rethrows the original AbortError.
  */
 export async function sendMessage(
   message: string,
   sessionId?: string | null,
   externalSignal?: AbortSignal,
+  onProgress?: (progress: ChatProgress) => void,
+  onStarted?: (sessionId: string) => void,
 ): Promise<ChatResponse> {
-  if (USE_MOCK) return mockSendMessage(message, sessionId, externalSignal)
+  if (USE_MOCK) {
+    onProgress?.({ phase: 'processing', label: 'Waiting for simulated response…' })
+    return mockSendMessage(message, sessionId, externalSignal)
+  }
 
   const controller = new AbortController()
   let timedOut = false
-  const timeout = setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, REQUEST_TIMEOUT_MS)
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const resetTimeout = () => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, REQUEST_TIMEOUT_MS)
+  }
+  resetTimeout()
   const onExternalAbort = () => controller.abort()
   externalSignal?.addEventListener('abort', onExternalAbort)
+  if (externalSignal?.aborted) controller.abort()
 
   try {
     let res: Response
     try {
-      res = await fetch(`${API_URL}/chat`, {
+      res = await fetch(`${API_URL}/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: message.trim(), session_id: sessionId ?? null }),
@@ -66,7 +77,41 @@ export async function sendMessage(
       throw toChatError(res.status, body.detail)
     }
 
-    return (await res.json()) as ChatResponse
+    if (!res.body) throw new ChatError('server', 'The server did not return a response stream.')
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        resetTimeout() // Heartbeats keep slow, healthy model calls alive.
+        buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, '\n')
+        let boundary: number
+        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+          const frame = buffer.slice(0, boundary)
+          buffer = buffer.slice(boundary + 2)
+          const lines = frame.split('\n')
+          const event = lines.find((line) => line.startsWith('event:'))?.slice(6).trim()
+          const data = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n')
+          if (!data) continue // SSE heartbeat comment.
+          const payload = JSON.parse(data)
+          if (event === 'started') onStarted?.(payload.session_id)
+          if (event === 'progress') onProgress?.(payload as ChatProgress)
+          if (event === 'error') throw toChatError(payload.status, payload.detail)
+          if (event === 'completed') return payload as ChatResponse
+        }
+      }
+      throw new ChatError('network', 'The connection closed before the assistant finished. Please try again.')
+    } finally {
+      await reader.cancel().catch(() => {})
+      reader.releaseLock()
+    }
+  } catch (err) {
+    if (externalSignal?.aborted) throw err
+    if (timedOut) throw new ChatError('timeout', 'The connection stopped responding. Please try again.')
+    if (err instanceof ChatError) throw err
+    throw new ChatError('network', 'The response connection was interrupted. Please try again.')
   } finally {
     clearTimeout(timeout)
     externalSignal?.removeEventListener('abort', onExternalAbort)

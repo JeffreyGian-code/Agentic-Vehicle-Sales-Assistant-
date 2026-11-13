@@ -30,7 +30,7 @@ If your dev server runs on another port or host, add it to `CORS_ORIGINS`
 
 ## 3. Endpoints
 
-There are only two endpoints. There are **no** vehicle search, vehicle
+There are chat and health endpoints. There are **no** vehicle search, vehicle
 details or EMI endpoints: the AI agent calls those internally. Everything the
 user asks goes through chat, and the answer comes back as text, not as
 structured car data.
@@ -76,6 +76,34 @@ Response (`200`):
 }
 ```
 
+### `POST /api/chat/stream` (used by the web UI)
+
+Accepts the same request as `/api/chat`, but returns `text/event-stream`.
+Both chat routes share the same per-IP rate allowance. Read the POST response
+with `fetch()` and a streaming `TextDecoder` (native `EventSource` uses GET).
+
+Events contain JSON in their `data` field:
+
+- `started`: `{session_id}`; save this immediately for follow-ups/retries.
+- `progress`: `{phase, label, run_id, tool}`. Phases are `processing`,
+  `tool_started`, `tool_finished`, `tool_failed`, and `writing`.
+  Track tool runs by ID so concurrent calls stay visible until they finish.
+- `completed`: `{reply, session_id}`; the final reply is delivered all at once.
+- `error`: `{status, detail}`; terminal failure after the stream has started.
+
+Validation and IP-rate-limit failures still use normal HTTP errors before streaming.
+Heartbeat comments arrive every 15 seconds during idle periods. The web UI uses
+a 60-second inactivity timeout, reset by progress or heartbeat data, rather than
+a fixed limit on total generation time. No tool arguments/results or reasoning
+are sent as progress. `writing` requires observed model text; integrations that
+buffer text may remain at `processing` until completion.
+
+The server sets `X-Accel-Buffering: no` and `Cache-Control: no-cache`; deployment
+proxies must also allow unbuffered streaming and a sufficiently long read timeout.
+Disconnecting cancels the agent task, though work already running in a synchronous
+tool's worker thread cannot be forcibly interrupted. Mock mode displays an
+explicit simulated-response label instead of inventing tool activity.
+
 ### TypeScript types
 
 ```ts
@@ -95,7 +123,7 @@ export interface ApiError {
 }
 ```
 
-### Example call
+### Example call (non-streaming clients)
 
 ```ts
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";

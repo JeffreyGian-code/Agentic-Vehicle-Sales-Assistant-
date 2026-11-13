@@ -15,6 +15,8 @@ export interface PendingRequest {
   conversationId: string
   startedAt: number
   text: string
+  status: string
+  activeTools: Record<string, string>
 }
 
 function newConversation(firstText: string): Conversation {
@@ -92,10 +94,22 @@ export function useChat() {
 
       const controller = new AbortController()
       abortRef.current = controller
-      setPending({ conversationId: convId, startedAt: Date.now(), text })
+      setPending({ conversationId: convId, startedAt: Date.now(), text, status: 'Connecting…', activeTools: {} })
 
       try {
-        const res = await sendMessage(text, sessionId, controller.signal)
+        const res = await sendMessage(text, sessionId, controller.signal, (progress) => {
+          if (controller.signal.aborted) return
+          setPending((current) => {
+            if (!current || current.conversationId !== convId) return current
+            const activeTools = { ...current.activeTools }
+            if (progress.run_id && progress.phase === 'tool_started') activeTools[progress.run_id] = progress.label
+            if (progress.run_id && (progress.phase === 'tool_finished' || progress.phase === 'tool_failed')) delete activeTools[progress.run_id]
+            const tools = Object.values(activeTools)
+            return { ...current, activeTools, status: tools.length ? tools.join(' · ') : progress.label }
+          })
+        }, (id) => {
+          if (!controller.signal.aborted) update(convId, (c) => ({ ...c, sessionId: id }))
+        })
         update(convId, (c) => ({
           ...c,
           sessionId: res.session_id,
