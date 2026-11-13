@@ -111,6 +111,56 @@ def test_writing_requires_text_not_tool_arguments_or_reasoning():
     events = frames(response)
     assert [data["phase"] for name, data in events if name == "progress"] == ["writing"]
     assert "private reasoning" not in response.text
+    assert [data["text"] for name, data in events if name == "delta"] == ["Hello", " again"]
+
+
+def test_text_arrives_before_generation_finishes():
+    from starlette.requests import Request
+    from app.api.routes import chat
+
+    async def exercise():
+        finish = asyncio.Event()
+
+        class IncrementalAgent:
+            async def astream_events(self, *args, **kwargs):
+                yield {"event": "on_chat_model_start"}
+                yield {"event": "on_chat_model_stream", "data": {"chunk": SimpleNamespace(content="Hello")}}
+                await finish.wait()
+                yield {"event": "on_chain_end", "parent_ids": [],
+                       "data": {"output": {"messages": [SimpleNamespace(content="Hello world")]}}}
+
+        response = await chat.stream_chat.__wrapped__(
+            Request({"type": "http"}), chat.ChatRequest(message="Hi"), IncrementalAgent(),
+        )
+        iterator = response.body_iterator
+        try:
+            async with asyncio.timeout(2):
+                while "event: delta" not in (chunk := await anext(iterator)):
+                    pass
+            assert '"text": "Hello"' in chunk
+            assert not finish.is_set()
+            finish.set()
+            assert "event: completed" in await anext(iterator)
+        finally:
+            await iterator.aclose()
+
+    asyncio.run(exercise())
+
+
+def test_new_model_call_resets_streamed_preamble():
+    class ToolRoundTripAgent:
+        async def astream_events(self, *args, **kwargs):
+            for text in ["Let me search.", "Found a car."]:
+                yield {"event": "on_chat_model_start"}
+                yield {"event": "on_chat_model_stream", "data": {"chunk": SimpleNamespace(content=text)}}
+            yield {"event": "on_chain_end", "parent_ids": [],
+                   "data": {"output": {"messages": [SimpleNamespace(content="Found a car.")]}}}
+
+    app.dependency_overrides[get_agent] = lambda: ToolRoundTripAgent()
+    events = frames(TestClient(app).post("/api/chat/stream", json={"message": "cars"}))
+    assert [data for name, data in events if name == "delta"] == [
+        {"text": "Let me search."}, {"text": "", "reset": True}, {"text": "Found a car."},
+    ]
 
 
 def test_send_disconnect_closes_stream_and_cancels_work():
@@ -165,8 +215,8 @@ def test_real_langchain_agent_stream():
     # Exercise the installed create_agent event protocol without API keys or a DB.
     from langchain.agents import create_agent
     from langchain_core.language_models.chat_models import BaseChatModel
-    from langchain_core.messages import AIMessage, ToolMessage
-    from langchain_core.outputs import ChatGeneration, ChatResult
+    from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
+    from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
     class LocalModel(BaseChatModel):
         @property
@@ -182,6 +232,15 @@ def test_real_langchain_agent_stream():
             )
             return ChatResult(generations=[ChatGeneration(message=message)])
 
+        def _stream(self, messages, stop=None, run_manager=None, **kwargs):
+            if isinstance(messages[-1], ToolMessage):
+                for text in ["Here are ", "your vehicles."]:
+                    yield ChatGenerationChunk(message=AIMessageChunk(content=text))
+            else:
+                yield ChatGenerationChunk(message=AIMessageChunk(
+                    content="", tool_calls=[{"name": "search_vehicles", "args": {}, "id": "call-1", "type": "tool_call"}],
+                ))
+
     def search_vehicles() -> str:
         """Search vehicle inventory."""
         return "One matching vehicle"
@@ -194,3 +253,4 @@ def test_real_langchain_agent_stream():
     assert events[0][1]["session_id"] == events[-1][1]["session_id"]
     assert any(data.get("phase") == "tool_started" and data["tool"] == "search_vehicles" for _, data in events)
     assert any(data.get("phase") == "tool_finished" for _, data in events)
+    assert [data["text"] for name, data in events if name == "delta"] == ["Here are ", "your vehicles."]

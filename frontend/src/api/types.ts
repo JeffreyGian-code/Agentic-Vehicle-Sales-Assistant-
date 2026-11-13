@@ -8,6 +8,11 @@ export interface ChatResponse {
   session_id: string
 }
 
+export interface ChatDelta {
+  text: string
+  reset?: boolean
+}
+
 export interface ChatProgress {
   phase: 'processing' | 'tool_started' | 'tool_finished' | 'tool_failed' | 'writing'
   label: string

@@ -17,6 +17,7 @@ export interface PendingRequest {
   text: string
   status: string
   activeTools: Record<string, string>
+  reply: string
 }
 
 function newConversation(firstText: string): Conversation {
@@ -94,7 +95,7 @@ export function useChat() {
 
       const controller = new AbortController()
       abortRef.current = controller
-      setPending({ conversationId: convId, startedAt: Date.now(), text, status: 'Connecting…', activeTools: {} })
+      setPending({ conversationId: convId, startedAt: Date.now(), text, status: 'Connecting…', activeTools: {}, reply: '' })
 
       try {
         const res = await sendMessage(text, sessionId, controller.signal, (progress) => {
@@ -109,6 +110,11 @@ export function useChat() {
           })
         }, (id) => {
           if (!controller.signal.aborted) update(convId, (c) => ({ ...c, sessionId: id }))
+        }, (delta) => {
+          if (controller.signal.aborted) return
+          setPending((current) => current?.conversationId === convId
+            ? { ...current, reply: (delta.reset ? '' : current.reply) + delta.text }
+            : current)
         })
         update(convId, (c) => ({
           ...c,

@@ -54,6 +54,33 @@ test('maps streamed conversation-limit errors and HTTP rate limits', async (t) =
   await assert.rejects(sendMessage('Hi'), (error) => error.kind === 'ip-rate-limit')
 })
 
+test('delivers text deltas before completion and supports answer resets', async (t) => {
+  let output
+  const deltas = []
+  t.mock.method(globalThis, 'fetch', async () => new Response(new ReadableStream({
+    start(controller) { output = controller },
+  })))
+  let gotDelta
+  const firstDelta = new Promise((resolve) => { gotDelta = resolve })
+  let completed = false
+  const result = sendMessage('Hi', null, undefined, undefined, undefined, (delta) => {
+    deltas.push(delta)
+    gotDelta()
+  }).then((response) => { completed = true; return response })
+  const write = (event, data) => output.enqueue(new TextEncoder().encode(frame(event, data)))
+  write('delta', { text: 'Searching…' })
+  await firstDelta
+  assert.equal(completed, false)
+  write('delta', { text: '', reset: true })
+  write('delta', { text: 'Hello ₹' })
+  write('delta', { text: ' world' })
+  write('completed', { session_id: 'abc', reply: 'Hello ₹ world' })
+  assert.equal((await result).reply, 'Hello ₹ world')
+  assert.deepEqual(deltas, [
+    { text: 'Searching…' }, { text: '', reset: true }, { text: 'Hello ₹' }, { text: ' world' },
+  ])
+})
+
 test('rejects an interrupted stream instead of treating it as a completed reply', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => stream(frame('started', { session_id: 'abc' })))
   await assert.rejects(sendMessage('Hi'), (error) => error.kind === 'network')

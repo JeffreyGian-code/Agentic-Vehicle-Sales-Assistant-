@@ -119,6 +119,9 @@ async def stream_chat(
                     run_id = str(event.get("run_id", ""))
                     progress = None
                     if kind == "on_chat_model_start":
+                        if writing:
+                            # A tool round-trip starts a new answer; replace any preamble.
+                            await queue.put(("delta", {"text": "", "reset": True}))
                         writing = False
                         progress = ChatProgress(phase="processing", label="Processing your request…")
                     elif kind == "on_tool_start":
@@ -132,17 +135,22 @@ async def stream_chat(
                             label="Processing tool results…" if kind == "on_tool_end" else "Tool failed; processing the result…",
                             run_id=run_id, tool=name,
                         )
-                    elif kind == "on_chat_model_stream" and not writing:
+                    elif kind == "on_chat_model_stream":
                         chunk = event.get("data", {}).get("chunk")
                         content = getattr(chunk, "content", None)
                         # Only text content counts; tool arguments/reasoning are not a reply.
-                        has_text = bool(content) if isinstance(content, str) else any(
-                            isinstance(part, dict) and part.get("type") == "text" and part.get("text")
+                        text = content if isinstance(content, str) else "".join(
+                            part.get("text", "")
                             for part in (content or [])
+                            if isinstance(part, dict) and part.get("type") == "text"
                         )
-                        if has_text:
-                            writing = True
-                            progress = ChatProgress(phase="writing", label="Writing a response…")
+                        if text:
+                            if not writing:
+                                writing = True
+                                await queue.put(("progress", ChatProgress(
+                                    phase="writing", label="Writing a response…",
+                                ).model_dump()))
+                            await queue.put(("delta", {"text": text}))
                     elif kind == "on_chain_end" and not event.get("parent_ids"):
                         result = event.get("data", {}).get("output", {})
                         messages = result.get("messages", []) if isinstance(result, dict) else []

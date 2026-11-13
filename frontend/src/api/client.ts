@@ -1,5 +1,5 @@
 import { mockHealth, mockSendMessage } from './mock'
-import { ChatError, type ApiError, type ChatProgress, type ChatResponse } from './types'
+import { ChatError, type ApiError, type ChatDelta, type ChatProgress, type ChatResponse } from './types'
 
 export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api').replace(/\/$/, '')
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -34,6 +34,7 @@ export async function sendMessage(
   externalSignal?: AbortSignal,
   onProgress?: (progress: ChatProgress) => void,
   onStarted?: (sessionId: string) => void,
+  onDelta?: (delta: ChatDelta) => void,
 ): Promise<ChatResponse> {
   if (USE_MOCK) {
     onProgress?.({ phase: 'processing', label: 'Waiting for simulated response…' })
@@ -98,6 +99,7 @@ export async function sendMessage(
           const payload = JSON.parse(data)
           if (event === 'started') onStarted?.(payload.session_id)
           if (event === 'progress') onProgress?.(payload as ChatProgress)
+          if (event === 'delta') onDelta?.(payload as ChatDelta)
           if (event === 'error') throw toChatError(payload.status, payload.detail)
           if (event === 'completed') return payload as ChatResponse
         }

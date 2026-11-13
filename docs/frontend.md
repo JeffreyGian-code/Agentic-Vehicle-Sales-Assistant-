@@ -88,7 +88,10 @@ Events contain JSON in their `data` field:
 - `progress`: `{phase, label, run_id, tool}`. Phases are `processing`,
   `tool_started`, `tool_finished`, `tool_failed`, and `writing`.
   Track tool runs by ID so concurrent calls stay visible until they finish.
-- `completed`: `{reply, session_id}`; the final reply is delivered all at once.
+- `delta`: `{text, reset?}`; append text immediately to the pending assistant reply.
+  When `reset` is true, clear the pending text first (a new model call after tools).
+- `completed`: `{reply, session_id}`; replace the pending text with this authoritative
+  final reply and save it once in the conversation history.
 - `error`: `{status, detail}`; terminal failure after the stream has started.
 
 Validation and IP-rate-limit failures still use normal HTTP errors before streaming.
@@ -205,10 +208,9 @@ Notes:
 
 ## 7. UX notes
 
-- **Slow responses.** Replies are not streamed and can take several seconds
-  (free OpenRouter model plus tool round-trips to the database). Show a typing
-  indicator, disable the send button while a request is pending, and use a
-  generous timeout (about 60 s).
+- **Slow responses.** Render text deltas as they arrive, with a typing indicator
+  before the first text and during tool round-trips. Disable send while pending
+  and use a 60-second inactivity timeout reset by stream data and heartbeats.
 - **Markdown in replies.** `reply` is free text written by the LLM and often
   contains Markdown (lists, bold, tables). Render it with a Markdown renderer
   (e.g. `react-markdown`) and do not inject raw HTML.
@@ -236,7 +238,6 @@ Notes:
 | Item | Impact on frontend |
 |------|--------------------|
 | `Retry-After` not in CORS `expose_headers` | Cannot show an exact cooldown; use a fixed one |
-| No streaming endpoint | Cannot show the reply word by word |
 | No machine-readable error codes | UI has to match on `detail` text |
 | Sessions stored in server memory only | Conversations end when the API restarts; no history endpoint |
 | Short conversation limit (5 LLM calls) | Users will need to start new chats often |
