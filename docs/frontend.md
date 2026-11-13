@@ -30,7 +30,7 @@ If your dev server runs on another port or host, add it to `CORS_ORIGINS`
 
 ## 3. Endpoints
 
-There are only two endpoints. There are **no** vehicle search, vehicle
+There are chat and health endpoints. There are **no** vehicle search, vehicle
 details or EMI endpoints: the AI agent calls those internally. Everything the
 user asks goes through chat, and the answer comes back as text, not as
 structured car data.
@@ -41,7 +41,15 @@ structured car data.
 { "status": "ok" }
 ```
 
-Not rate limited. Use it to show "service online/offline".
+Not rate limited. Lightweight API liveness only; does not check dependencies.
+
+### `GET /api/health/services`
+
+Called only by the manual service status button. Limited to 6 requests per minute per IP.
+Returns separate `api`, `database`, and `ai` objects, each with `status` and a safe `detail` message.
+Database runs `SELECT 1` with connection and statement timeouts. AI verifies the OpenRouter key via `/api/v1/key`; it does not generate text or prove model availability.
+Dependency failures return HTTP 200 with `unavailable` for the affected service. The UI shows the last-check time; failed status requests leave dependency status unknown.
+
 
 ### `POST /api/chat`
 
@@ -68,6 +76,37 @@ Response (`200`):
 }
 ```
 
+### `POST /api/chat/stream` (used by the web UI)
+
+Accepts the same request as `/api/chat`, but returns `text/event-stream`.
+Both chat routes share the same per-IP rate allowance. Read the POST response
+with `fetch()` and a streaming `TextDecoder` (native `EventSource` uses GET).
+
+Events contain JSON in their `data` field:
+
+- `started`: `{session_id}`; save this immediately for follow-ups/retries.
+- `progress`: `{phase, label, run_id, tool}`. Phases are `processing`,
+  `tool_started`, `tool_finished`, `tool_failed`, and `writing`.
+  Track tool runs by ID so concurrent calls stay visible until they finish.
+- `delta`: `{text, reset?}`; append text immediately to the pending assistant reply.
+  When `reset` is true, clear the pending text first (a new model call after tools).
+- `completed`: `{reply, session_id}`; replace the pending text with this authoritative
+  final reply and save it once in the conversation history.
+- `error`: `{status, detail}`; terminal failure after the stream has started.
+
+Validation and IP-rate-limit failures still use normal HTTP errors before streaming.
+Heartbeat comments arrive every 15 seconds during idle periods. The web UI uses
+a 60-second inactivity timeout, reset by progress or heartbeat data, rather than
+a fixed limit on total generation time. No tool arguments/results or reasoning
+are sent as progress. `writing` requires observed model text; integrations that
+buffer text may remain at `processing` until completion.
+
+The server sets `X-Accel-Buffering: no` and `Cache-Control: no-cache`; deployment
+proxies must also allow unbuffered streaming and a sufficiently long read timeout.
+Disconnecting cancels the agent task, though work already running in a synchronous
+tool's worker thread cannot be forcibly interrupted. Mock mode displays an
+explicit simulated-response label instead of inventing tool activity.
+
 ### TypeScript types
 
 ```ts
@@ -87,7 +126,7 @@ export interface ApiError {
 }
 ```
 
-### Example call
+### Example call (non-streaming clients)
 
 ```ts
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
@@ -169,10 +208,9 @@ Notes:
 
 ## 7. UX notes
 
-- **Slow responses.** Replies are not streamed and can take several seconds
-  (free OpenRouter model plus tool round-trips to the database). Show a typing
-  indicator, disable the send button while a request is pending, and use a
-  generous timeout (about 60 s).
+- **Slow responses.** Render text deltas as they arrive, with a typing indicator
+  before the first text and during tool round-trips. Disable send while pending
+  and use a 60-second inactivity timeout reset by stream data and heartbeats.
 - **Markdown in replies.** `reply` is free text written by the LLM and often
   contains Markdown (lists, bold, tables). Render it with a Markdown renderer
   (e.g. `react-markdown`) and do not inject raw HTML.
@@ -200,7 +238,6 @@ Notes:
 | Item | Impact on frontend |
 |------|--------------------|
 | `Retry-After` not in CORS `expose_headers` | Cannot show an exact cooldown; use a fixed one |
-| No streaming endpoint | Cannot show the reply word by word |
 | No machine-readable error codes | UI has to match on `detail` text |
 | Sessions stored in server memory only | Conversations end when the API restarts; no history endpoint |
 | Short conversation limit (5 LLM calls) | Users will need to start new chats often |

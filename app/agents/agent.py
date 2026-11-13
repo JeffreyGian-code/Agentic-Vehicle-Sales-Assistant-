@@ -16,6 +16,7 @@ model = ChatOpenRouter(
     model="nvidia/nemotron-3.5-lightning:free",
     base_url="https://openrouter.ai/api/v1",
     temperature=0,
+    streaming=True,
 )
 
 agent = create_agent(

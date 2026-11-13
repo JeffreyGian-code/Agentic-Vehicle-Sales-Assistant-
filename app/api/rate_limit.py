@@ -25,8 +25,8 @@ CHAT_LIMIT = os.getenv("RATE_LIMIT_CHAT", "10/minute;100/day")
 # when running several workers/servers so they share the same counters.
 STORAGE_URI = os.getenv("RATE_LIMIT_STORAGE_URI", "memory://")
 
-# Only POST /api/chat is limited (@limiter.limit(CHAT_LIMIT)); it is the one
-# route that reaches the paid LLM and, through the agent's tools, the database.
+# POST /api/chat and /api/chat/stream share a limit; both reach the LLM and,
+# through the agent's tools, the database.
 # /api/health is intentionally not limited.
 limiter = Limiter(
     key_func=get_remote_address,

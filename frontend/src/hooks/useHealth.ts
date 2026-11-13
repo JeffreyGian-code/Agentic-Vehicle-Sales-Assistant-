@@ -1,35 +1,35 @@
-import { useCallback, useEffect, useState } from 'react'
-import { checkHealth } from '../api/client'
+import { useCallback, useRef, useState } from 'react'
+import { checkHealth, type ServiceHealth } from '../api/client'
 
-export type HealthStatus = 'checking' | 'online' | 'offline'
-
-const POLL_MS = 30_000
+export type HealthStatus = 'unchecked' | 'checking' | 'online' | 'offline' | 'degraded'
 
 export function useHealth() {
-  const [status, setStatus] = useState<HealthStatus>('checking')
+  const [status, setStatus] = useState<HealthStatus>('unchecked')
+  const [services, setServices] = useState<ServiceHealth | null>(null)
+  const [checkedAt, setCheckedAt] = useState<string | null>(null)
+  const running = useRef(false)
 
   const refresh = useCallback(async () => {
-    setStatus((s) => (s === 'online' ? s : 'checking'))
-    const ok = await checkHealth()
-    setStatus(ok ? 'online' : 'offline')
+    if (running.current) return
+    running.current = true
+    setStatus('checking')
+    setServices(null)
+    try {
+      const result = await checkHealth()
+      setServices(result)
+      setStatus(Object.values(result).every((check) => check.status === 'ok') ? 'online' : 'degraded')
+    } catch {
+      setStatus('offline')
+      setServices({
+        api: { status: 'unknown', detail: 'Status check failed or timed out. Try again shortly.' },
+        database: { status: 'unknown', detail: 'Could not check through the API.' },
+        ai: { status: 'unknown', detail: 'Could not check through the API.' },
+      })
+    } finally {
+      setCheckedAt(new Date().toLocaleTimeString())
+      running.current = false
+    }
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      const ok = await checkHealth()
-      if (!cancelled) setStatus(ok ? 'online' : 'offline')
-    }
-    run()
-    const id = setInterval(run, POLL_MS)
-    const onFocus = () => run()
-    window.addEventListener('focus', onFocus)
-    return () => {
-      cancelled = true
-      clearInterval(id)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [])
-
-  return { status, refresh }
+  return { status, services, checkedAt, refresh }
 }

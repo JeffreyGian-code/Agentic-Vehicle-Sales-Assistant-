@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PendingRequest } from '../hooks/useChat'
 import type { Conversation, Message } from '../lib/types'
 import { formatDay } from '../lib/utils'
-import { MessageBubble } from './MessageBubble'
+import { Avatar, Markdown, MessageBubble } from './MessageBubble'
 import { TypingIndicator } from './TypingIndicator'
 
 interface Props {
@@ -41,7 +41,7 @@ export function MessageList({ conversation, pending, cooldown, onRetry, onNewCha
   useEffect(() => {
     const el = scrollRef.current
     if (el && atBottom) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-  }, [messages.length, isPendingHere, atBottom])
+  }, [messages.length, isPendingHere, pending?.reply, atBottom])
 
   // Jump to bottom when switching conversations.
   useEffect(() => {
@@ -86,7 +86,17 @@ export function MessageList({ conversation, pending, cooldown, onRetry, onNewCha
           })}
 
           <AnimatePresence>
-            {isPendingHere && pending && <TypingIndicator key="typing" startedAt={pending.startedAt} text={pending.text} />}
+            {isPendingHere && pending && (pending.reply ? (
+              <div key="streaming" className="flex gap-3" aria-busy="true">
+                <Avatar pulse />
+                <div className="min-w-0 flex-1">
+                  <div className="inline-block max-w-full rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <Markdown text={pending.reply} />
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400" role="status">{pending.status}</p>
+                </div>
+              </div>
+            ) : <TypingIndicator key="typing" startedAt={pending.startedAt} status={pending.status} />)}
           </AnimatePresence>
 
           {suggestions.length > 0 && (
