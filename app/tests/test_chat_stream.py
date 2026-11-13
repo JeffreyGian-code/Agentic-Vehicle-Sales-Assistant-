@@ -38,9 +38,9 @@ class StreamAgent:
         self.calls.append((payload, config, version))
         yield {"event": "on_chat_model_start"}
         yield {"event": "on_tool_start", "name": "search_vehicles", "run_id": "tool-1",
-               "data": {"input": "private tool arguments"}}
+               "data": {"input": {"request": {"brand": "Honda", "max_price": 1000000}}}}
         yield {"event": "on_tool_end", "name": "search_vehicles", "run_id": "tool-1",
-               "data": {"output": "private database rows"}}
+               "data": {"output": SimpleNamespace(content='{"vehicles": [{"id": 1, "brand": "Honda"}]}', response_metadata={"secret": "hidden"})}}
         if self.error:
             raise self.error
         yield {"event": "on_chain_end", "parent_ids": ["root"], "data": {"output": "nested"}}
@@ -48,7 +48,11 @@ class StreamAgent:
                "data": {"output": {"messages": [SimpleNamespace(content="Here are the cars")]}}}
 
 
-def test_stream_lifecycle_and_session():
+def test_stream_lifecycle_and_session(monkeypatch):
+    from app.api.routes import chat
+
+    clock = iter([10.0, 10.125])
+    monkeypatch.setattr(chat, "perf_counter", lambda: next(clock))
     agent = StreamAgent()
     app.dependency_overrides[get_agent] = lambda: agent
     response = TestClient(app).post("/api/chat/stream", json={"message": "cars", "session_id": "session-a"})
@@ -60,8 +64,12 @@ def test_stream_lifecycle_and_session():
     ]
     assert events[2][1]["tool"] == "search_vehicles"
     assert events[2][1]["run_id"] == events[3][1]["run_id"]
+    assert events[3][1]["duration_ms"] == 125.0
     assert agent.calls[0][1]["configurable"]["thread_id"] == "session-a"
-    assert "private" not in response.text
+    assert events[2][1]["input"] == {"request": {"brand": "Honda", "max_price": 1000000}}
+    assert json.loads(events[3][1]["output"]) == {"vehicles": [{"id": 1, "brand": "Honda"}]}
+    assert "response_metadata" not in response.text
+    assert "hidden" not in response.text
     assert events[-1][1]["reply"] == "Here are the cars"
 
 
@@ -252,5 +260,5 @@ def test_real_langchain_agent_stream():
     assert events[-1][1]["reply"] == "Here are your vehicles."
     assert events[0][1]["session_id"] == events[-1][1]["session_id"]
     assert any(data.get("phase") == "tool_started" and data["tool"] == "search_vehicles" for _, data in events)
-    assert any(data.get("phase") == "tool_finished" for _, data in events)
+    assert any(data.get("phase") == "tool_finished" and data["output"] == "One matching vehicle" for _, data in events)
     assert [data["text"] for name, data in events if name == "delta"] == ["Here are ", "your vehicles."]

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Any, Literal
 
 
 class ChatRequest(BaseModel):
@@ -20,4 +20,7 @@ class ChatProgress(BaseModel):
     label: str
     run_id: str | None = None
     tool: str | None = None
+    input: Any = None
+    output: Any = None
+    duration_ms: float | None = None
 

@@ -17,7 +17,7 @@ function toChatError(status: number, detail: ApiError['detail'] | undefined): Ch
   const text = detailToText(detail, 'Something went wrong while processing your request.')
   if (status === 422) return new ChatError('validation', text, status)
   if (status === 429) {
-    return text.toLowerCase().includes(CONVERSATION_LIMIT_HINT)
+    return (text.toLowerCase().includes(CONVERSATION_LIMIT_HINT) || text.toLowerCase().includes('processing limit'))
       ? new ChatError('conversation-limit', text, status)
       : new ChatError('ip-rate-limit', text, status)
   }
@@ -38,7 +38,11 @@ export async function sendMessage(
 ): Promise<ChatResponse> {
   if (USE_MOCK) {
     onProgress?.({ phase: 'processing', label: 'Waiting for simulated response…' })
-    return mockSendMessage(message, sessionId, externalSignal)
+    const id = sessionId ?? crypto.randomUUID()
+    onStarted?.(id)
+    const response = await mockSendMessage(message, id, externalSignal)
+    onProgress?.({ phase: 'writing', label: 'Writing simulated response?' })
+    return response
   }
 
   const controller = new AbortController()

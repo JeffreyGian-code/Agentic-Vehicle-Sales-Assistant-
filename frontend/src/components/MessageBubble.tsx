@@ -33,15 +33,14 @@ export const Markdown = memo(function Markdown({ text }: { text: string }) {
 interface Props {
   message: Message
   onRetry?: (id: string) => void
-  onNewChat?: (carryText?: string) => void
   canRetry: boolean
   cooldown: number
 }
 
-export function MessageBubble({ message, onRetry, onNewChat, canRetry, cooldown }: Props) {
+export function MessageBubble({ message, onRetry, canRetry, cooldown }: Props) {
   if (message.role === 'user') return <UserBubble message={message} />
   if (message.role === 'error') {
-    return <ErrorBubble message={message} onRetry={onRetry} onNewChat={onNewChat} canRetry={canRetry} cooldown={cooldown} />
+    return <ErrorBubble message={message} onRetry={onRetry} canRetry={canRetry} cooldown={cooldown} />
   }
   return <AssistantBubble message={message} />
 }
@@ -126,14 +125,14 @@ export function Avatar({ pulse = false }: { pulse?: boolean }) {
 const ERROR_META: Record<ChatErrorKind | 'cancelled', { title: string; icon: typeof AlertTriangle; tone: 'red' | 'amber' }> = {
   validation: { title: 'Message not accepted', icon: AlertTriangle, tone: 'amber' },
   'ip-rate-limit': { title: 'Slow down a little', icon: Clock, tone: 'amber' },
-  'conversation-limit': { title: 'Conversation limit reached', icon: Sparkles, tone: 'amber' },
+  'conversation-limit': { title: 'Request processing limit reached', icon: Sparkles, tone: 'amber' },
   server: { title: 'Something went wrong', icon: AlertTriangle, tone: 'red' },
   network: { title: "Can't reach the server", icon: WifiOff, tone: 'red' },
   timeout: { title: 'Request timed out', icon: PlugZap, tone: 'red' },
   cancelled: { title: 'Stopped', icon: Square, tone: 'amber' },
 }
 
-function ErrorBubble({ message, onRetry, onNewChat, canRetry, cooldown }: Props) {
+function ErrorBubble({ message, onRetry, canRetry, cooldown }: Props) {
   const kind = message.errorKind ?? 'server'
   const meta = ERROR_META[kind]
   const Icon = meta.icon
@@ -168,14 +167,7 @@ function ErrorBubble({ message, onRetry, onNewChat, canRetry, cooldown }: Props)
         <p className="mt-0.5 opacity-90">{message.content}</p>
 
         <div className="mt-2.5 flex flex-wrap gap-2">
-          {kind === 'conversation-limit' ? (
-            <button
-              onClick={() => onNewChat?.(message.retryText)}
-              className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-brand-500 active:scale-95"
-            >
-              <Sparkles className="size-3.5" /> Ask this again in a new chat
-            </button>
-          ) : kind !== 'validation' && message.retryText ? (
+          {kind !== 'validation' && message.retryText ? (
             <button
               disabled={!canRetry || cooldown > 0}
               onClick={() => onRetry?.(message.id)}

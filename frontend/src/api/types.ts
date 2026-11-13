@@ -18,6 +18,9 @@ export interface ChatProgress {
   label: string
   run_id?: string | null
   tool?: string | null
+  input?: unknown
+  output?: unknown
+  duration_ms?: number | null
 }
 
 export interface ValidationIssue {

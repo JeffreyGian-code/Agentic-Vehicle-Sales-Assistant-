@@ -34,8 +34,8 @@ test('reads fragmented SSE, heartbeats, tool events, Unicode, and final reply', 
   t.mock.method(globalThis, 'fetch', async (url) => {
     assert.match(url, /\/chat\/stream$/)
     return stream(frame('started', { session_id: 'abc' }) + ': heartbeat\n\n' +
-      frame('progress', { phase: 'tool_started', tool: 'calculate_emi', run_id: '1', label: 'Calculating EMI…' }) +
-      frame('progress', { phase: 'tool_finished', tool: 'calculate_emi', run_id: '1', label: 'Processing results…' }) +
+      frame('progress', { phase: 'tool_started', tool: 'calculate_emi', run_id: '1', label: 'Calculating EMI…', input: { principal: 100000 } }) +
+      frame('progress', { phase: 'tool_finished', tool: 'calculate_emi', run_id: '1', label: 'Processing results…', output: { emi: 2500 } }) +
       frame('completed', { session_id: 'abc', reply: 'EMI ₹2,500' }))
   })
   const result = await sendMessage('EMI?', null, undefined, (p) => progress.push(p), (id) => sessions.push(id))
@@ -43,6 +43,8 @@ test('reads fragmented SSE, heartbeats, tool events, Unicode, and final reply', 
   assert.deepEqual(sessions, ['abc'])
   assert.deepEqual(progress.map((p) => p.phase), ['tool_started', 'tool_finished'])
   assert.equal(progress[0].label, 'Calculating EMI…')
+  assert.deepEqual(progress[0].input, { principal: 100000 })
+  assert.deepEqual(progress[1].output, { emi: 2500 })
 })
 
 test('maps streamed conversation-limit errors and HTTP rate limits', async (t) => {

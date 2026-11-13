@@ -1,6 +1,5 @@
 import { Menu, Monitor, Moon, RefreshCw, Sun } from 'lucide-react'
 import { USE_MOCK } from '../api/client'
-import { EXPECTED_REPLIES_PER_CONVERSATION } from '../hooks/useChat'
 import type { HealthStatus } from '../hooks/useHealth'
 import type { Theme } from '../hooks/useTheme'
 import type { Conversation } from '../lib/types'
@@ -23,14 +22,14 @@ export function ChatHeader({ conversation, health, onRefreshHealth, theme, onCyc
       <button
         onClick={onOpenSidebar}
         className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden dark:text-slate-300 dark:hover:bg-slate-800"
-        aria-label="Open conversations"
+        aria-label="Open execution dashboard"
       >
         <Menu className="size-5" />
       </button>
 
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-sm font-semibold sm:text-base">{conversation?.title ?? 'New conversation'}</h1>
-        {conversation && <ReplyMeter conversation={conversation} />}
+        <h1 className="truncate text-sm font-semibold sm:text-base">{conversation?.title ?? 'Your vehicle assistant'}</h1>
+        <p className="text-[11px] text-slate-500">One conversation ? Live execution dashboard</p>
       </div>
 
       {USE_MOCK && (
@@ -74,38 +73,5 @@ export function ChatHeader({ conversation, health, onRefreshHealth, theme, onCyc
         <ThemeIcon className="size-[18px]" />
       </button>
     </header>
-  )
-}
-
-function ReplyMeter({ conversation }: { conversation: Conversation }) {
-  const used = Math.min(conversation.replies, EXPECTED_REPLIES_PER_CONVERSATION)
-  const left = EXPECTED_REPLIES_PER_CONVERSATION - used
-  const label = conversation.ended
-    ? 'Conversation limit reached'
-    : left === 0
-      ? 'Near the limit, a new chat may be needed'
-      : `About ${left} ${left === 1 ? 'reply' : 'replies'} left in this chat`
-
-  return (
-    <div className="flex items-center gap-1.5" title="Each conversation allows a limited amount of AI processing">
-      <div className="flex gap-0.5">
-        {Array.from({ length: EXPECTED_REPLIES_PER_CONVERSATION }).map((_, i) => (
-          <span
-            key={i}
-            className={cn(
-              'h-1 w-4 rounded-full transition-colors',
-              conversation.ended
-                ? 'bg-red-400'
-                : i < used
-                  ? left === 0
-                    ? 'bg-amber-400'
-                    : 'bg-brand-500'
-                  : 'bg-slate-200 dark:bg-slate-700',
-            )}
-          />
-        ))}
-      </div>
-      <span className="truncate text-[11px] text-slate-500 dark:text-slate-400">{label}</span>
-    </div>
   )
 }

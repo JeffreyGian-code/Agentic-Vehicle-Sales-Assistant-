@@ -12,7 +12,6 @@ interface Props {
   pending: PendingRequest | null
   cooldown: number
   onRetry: (id: string) => void
-  onNewChat: (carryText?: string) => void
   onSuggestion: (text: string) => void
 }
 
@@ -30,7 +29,7 @@ function followUps(reply: Message): string[] {
   return out.slice(0, 3)
 }
 
-export function MessageList({ conversation, pending, cooldown, onRetry, onNewChat, onSuggestion }: Props) {
+export function MessageList({ conversation, pending, cooldown, onRetry, onSuggestion }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
   const isPendingHere = pending?.conversationId === conversation.id
@@ -77,7 +76,6 @@ export function MessageList({ conversation, pending, cooldown, onRetry, onNewCha
                 <MessageBubble
                   message={m}
                   onRetry={onRetry}
-                  onNewChat={onNewChat}
                   canRetry={!pending && i === messages.length - 1}
                   cooldown={cooldown}
                 />

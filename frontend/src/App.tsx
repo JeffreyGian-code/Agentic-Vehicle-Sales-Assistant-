@@ -19,7 +19,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const { send, newChat, stop, pending } = chat
+  const { send, stop, pending } = chat
 
   /** Send from the composer: clears the draft. */
   const handleComposerSend = useCallback(
@@ -33,27 +33,11 @@ export default function App() {
   /** Send from a starter card or suggestion chip: keeps whatever the user was typing. */
   const handleQuickSend = useCallback((text: string) => void send(text), [send])
 
-  const handleNewChat = useCallback(
-    (carryText?: string) => {
-      if (carryText) {
-        void send(carryText, { fresh: true })
-        return
-      }
-      newChat()
-      setDraft('')
-      requestAnimationFrame(() => inputRef.current?.focus())
-    },
-    [newChat, send],
-  )
-
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const typing = e.target instanceof HTMLElement && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        handleNewChat()
-      } else if (e.key === 'Escape' && pending) {
+      if (e.key === 'Escape' && pending) {
         stop()
       } else if (e.key === '/' && !typing) {
         e.preventDefault()
@@ -62,7 +46,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [handleNewChat, pending, stop])
+  }, [pending, stop])
 
   const active = chat.active
 
@@ -70,16 +54,10 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <div className="flex h-full overflow-hidden">
         <Sidebar
-          conversations={chat.conversations}
-          activeId={chat.activeId}
-          pendingId={pending?.conversationId ?? null}
+          conversation={active}
+          pending={pending}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          onSelect={chat.select}
-          onNew={() => handleNewChat()}
-          onDelete={chat.remove}
-          onRename={chat.rename}
-          onClearAll={chat.clearAll}
         />
 
         <main className="relative flex min-w-0 flex-1 flex-col">
@@ -137,7 +115,6 @@ export default function App() {
                 pending={pending}
                 cooldown={chat.cooldown}
                 onRetry={chat.retry}
-                onNewChat={handleNewChat}
                 onSuggestion={handleQuickSend}
               />
             ) : (
@@ -152,10 +129,8 @@ export default function App() {
             onChange={setDraft}
             onSend={handleComposerSend}
             onStop={stop}
-            onNewChat={() => handleNewChat()}
             pending={!!pending}
             cooldown={chat.cooldown}
-            ended={!!active?.ended}
             inputRef={inputRef}
           />
         </main>

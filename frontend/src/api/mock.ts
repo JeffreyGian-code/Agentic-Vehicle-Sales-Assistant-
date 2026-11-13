@@ -10,8 +10,6 @@ import { ChatError, type ChatResponse } from './types'
  *   /slow   -> very slow reply
  */
 
-const callsPerSession = new Map<string, number>()
-const MOCK_THREAD_LIMIT = 5
 
 function wait(ms: number, signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -119,16 +117,14 @@ export async function mockSendMessage(
     throw new ChatError('server', 'Something went wrong while processing your request.', 500)
   }
 
-  const used = callsPerSession.get(id) ?? 0
-  const { reply, cost } = buildReply(text)
-  if (text.includes('/limit') || used + cost > MOCK_THREAD_LIMIT) {
+  const { reply } = buildReply(text)
+  if (text.includes('/limit')) {
     throw new ChatError(
       'conversation-limit',
-      'The processing limit for this conversation was reached. Please start a new conversation.',
+      'The processing limit for this request was reached. Please try a simpler query in this conversation.',
       429,
     )
   }
-  callsPerSession.set(id, used + cost)
   return { reply, session_id: id }
 }
 
