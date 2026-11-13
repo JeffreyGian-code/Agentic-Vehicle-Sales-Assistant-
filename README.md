@@ -125,6 +125,9 @@ database container to be running.
 
 ## Continuous integration
 
+See [the GitHub Actions guide](docs/github-actions.md) for a simple explanation
+of the setup and why each part is needed.
+
 [Vehicle Agent CI](.github/workflows/ci.yml) runs on pull requests targeting
 `main`, pushes to `main`, and manual runs from GitHub's Actions tab. Two jobs
 run independently:
