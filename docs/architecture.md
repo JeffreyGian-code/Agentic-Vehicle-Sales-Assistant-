@@ -117,7 +117,8 @@ The agent is created once with LangChain's `create_agent` and has four parts:
 ### Tools, services and repository
 
 - **Tools** contain no logic. `search_vehicles` takes a `SearchRequest`
-  (brand, model, max_price, vehicle_type, all optional) and passes it to
+  (optional brand, model, variant, min_price, max_price, vehicle_type, and
+  sort_order) and passes it to
   `VehicleService`. `calculate_emi` passes the loan values to `FinanceService`.
 - **`VehicleService`** depends on the `VehicleRepository` interface, not on
   PostgreSQL directly. This is the *repository pattern*: the storage could be
@@ -126,6 +127,10 @@ The agent is created once with LangChain's `create_agent` and has four parts:
   were given. Values are passed as bound parameters (`:brand`, `:max_price`),
   which prevents SQL injection. Text matches are case-insensitive, and the
   schema has matching `LOWER(...)` indexes so these lookups stay fast.
+  After filtering, broad searches select one variant per case-insensitive
+  brand/model using `ROW_NUMBER()`. Specific model searches keep individual
+  variants. Both return at most three results ordered by price, then ID;
+  `price_asc` is the default and `price_desc` selects higher prices first.
 - **`FinanceService`** is pure Python with no I/O. It uses the standard EMI
   formula: `EMI = P × r × (1+r)^n / ((1+r)^n − 1)`, where `r` is the monthly
   rate, and returns the monthly EMI, total payment and total interest.

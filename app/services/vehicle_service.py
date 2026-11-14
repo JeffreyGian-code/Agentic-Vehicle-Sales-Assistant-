@@ -1,3 +1,4 @@
+from app.models.SearchRequest import SortOrder
 from app.models.vehicle import Vehicle
 from app.repositories.vehicle_repository import VehicleRepository
 
@@ -14,6 +15,8 @@ class VehicleService:
         vehicle_type: str | None = None,
         model: str | None = None,
         variant: str | None = None,
+        min_price: int | None = None,
+        sort_order: SortOrder = "price_asc",
     ) -> list[Vehicle]:
 
         return self.repository.search(
@@ -22,6 +25,8 @@ class VehicleService:
             vehicle_type=vehicle_type,
             model=model,
             variant=variant,
+            min_price=min_price,
+            sort_order=sort_order,
         )
 
     def get_by_id(
