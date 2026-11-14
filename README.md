@@ -66,26 +66,33 @@ screenshot, or commit.
 docker compose up -d
 ```
 
-`docker-compose.yml` starts a `postgres:17` container named `vehicle-pg`. The
-user is `vehicle_app` and the database is `vehicle_agent`. Data is stored in the
-`vehicle_pgdata` volume, so it survives restarts.
+`docker-compose.yml` starts PostgreSQL 18 as `vehicle-pg`, using the
+`aurion_pg18data` volume. The default user is `vehicle_app` and database is
+`vehicle_agent`. The original PostgreSQL 17 volume is retained separately.
 
-On the **first** start, with an empty volume, PostgreSQL automatically runs the
-SQL files in `database/` in alphabetical order:
+On the first startup with an empty volume, Docker automatically loads the
+repository's initialization files in order:
 
-| File                  | Purpose                                                        |
-|-----------------------|----------------------------------------------------------------|
-| `database/schema.sql` | Creates the `vehicles` table and its indexes                   |
-| `database/seed.sql`   | Loads 200 vehicles (20 Indian-market models × 10 trims each)   |
+1. `database/schema.sql` creates the original tables, constraints and indexes.
+2. `database/seed.sql` loads the original 200 `vehicles` and 200 `vehicles_backup`
+   rows, including the separate `variant` field and identity sequence state.
 
-Check that the data loaded (expect `200`):
+No external backup file or local PostgreSQL installation is needed. Everyone
+cloning this revision starts with the same catalogue. Each machine keeps its
+own independent database; later edits are not synchronized between machines.
+Existing volumes are preserved and are not seeded again on restart.
+
+Verify the initialized data (expect 200):
 
 ```powershell
 docker compose exec postgres psql -U vehicle_app -d vehicle_agent -c "SELECT COUNT(*) FROM vehicles;"
 ```
 
-`seed.sql` clears and replaces the `vehicles` table. Never run it against a
-database that contains real data.
+See [the database setup guide](docs/database-restore.md) for persistence and
+existing-volume details.
+
+The catalogue has separate `model` and optional `variant` columns; both are
+returned by the repository and can be searched independently.
 
 ## 4. Run the assistant
 
@@ -109,10 +116,12 @@ Type `exit` to quit.
 | Stop the database                        | `docker compose stop`                    |
 | Check status                             | `docker compose ps`                      |
 | Open a SQL shell                         | `docker compose exec postgres psql -U vehicle_app -d vehicle_agent` |
-| Reset everything (re-runs schema + seed) | `docker compose down -v` then `docker compose up -d` |
+| Database initialization details | See [database setup guide](docs/database-restore.md) |
 
-Changes to `database/*.sql` or `POSTGRES_PASSWORD` only take effect after a
-reset, because the init scripts and password apply only to a fresh volume.
+The database volume survives restarts. Do not use `docker compose down -v` unless
+you intend to delete its data. Database initialization credentials only apply
+when the volume is first created. The SQL files in `database/` contain the
+original catalogue and run automatically only for a fresh volume.
 
 ## Running tests
 
@@ -120,8 +129,11 @@ reset, because the init scripts and password apply only to a fresh volume.
 python -m pytest
 ```
 
-`app/tests/test_vehicle_service.py` is an integration test and needs the
-database container to be running.
+`app/tests/test_vehicle_service.py` is an integration test. Run the suite with
+`DATABASE_URL` pointing to a separate PostgreSQL 18 test database initialized
+with `database/schema.sql` and `database/seed.sql`, as CI does. The suite uses
+the original catalogue and inserts a temporary variant record for one test;
+keep tests separate from databases you edit or use for deployment.
 
 ## Continuous integration
 
@@ -132,7 +144,7 @@ of the setup and why each part is needed.
 `main`, pushes to `main`, and manual runs from GitHub's Actions tab. Two jobs
 run independently:
 
-- **Backend:** Python 3.12, cached pip downloads, and a disposable PostgreSQL 17
+- **Backend:** Python 3.12, cached pip downloads, and a disposable PostgreSQL 18
   service. CI loads `database/schema.sql` followed by `database/seed.sql`, then
   runs `python -m pytest`. The database credentials are CI-only values; no
   repository secrets are required. AI calls use the existing test doubles,
@@ -154,8 +166,8 @@ Deployment is not part of this validation workflow.
 
 | Symptom | Fix |
 |---------|-----|
-| `password authentication failed for user "vehicle_app"` | `DATABASE_URL` password does not match the one the volume was created with. Fix `.env`, then reset (`docker compose down -v`, `docker compose up -d`). |
-| `relation "vehicles" does not exist` | The volume was created before `database/` existed. Reset as above. |
+| `password authentication failed for user "vehicle_app"` | `DATABASE_URL` password does not match the one the volume was created with. Correct `.env` to match the existing database credentials; do not delete the data volume. |
+| `relation "vehicles" does not exist` | Check `docker compose logs postgres`; initialization only runs on empty volumes. See the database setup guide for existing volumes. |
 | `port is already allocated` / port 5432 in use | A local PostgreSQL service is running. Stop it, or set `POSTGRES_PORT=5433` in `.env` and use `:5433` in `DATABASE_URL`. |
 | `LangSmithError ... 403 Forbidden` | Set `LANGSMITH_TRACING=false` or provide a valid `LANGSMITH_API_KEY`. |
 | `DATABASE_URL is not configured.` | `.env` is missing or does not define `DATABASE_URL`. |
@@ -168,4 +180,4 @@ Deployment is not part of this validation workflow.
 - Queries use SQLAlchemy bound parameters (`:brand`, `:max_price`, …) rather than string interpolation, preventing SQL injection.
 - Connections come from a SQLAlchemy engine with `pool_pre_ping=True` (`app/database.py`) and are released by context managers after each call.
 - Brand, model, vehicle type and price are indexed. Text matching is case-insensitive.
-- The `model` filter is an exact match on the full name including the trim (e.g. `City VX`), so a search for just `City` returns nothing.
+- `model` and `variant` are separate, case-insensitive exact-match filters (for example, model `City` and variant `VX`).

@@ -25,9 +25,8 @@ to buy or increase their budget.
 
 ## Be accurate about what the application knows
 
-The catalogue provides only vehicle ID, full model/variant name, brand, listed
-price in INR, and vehicle type. It currently uses sample vehicle data with
-approximate ex-showroom prices. Treat prices as indicative catalogue values,
+The catalogue provides only vehicle ID, model name, a separate optional variant, brand, listed
+price in INR, and vehicle type. It uses an imported vehicle catalogue. Treat prices as indicative catalogue values,
 not live dealer quotes or confirmed on-road prices. Explain this briefly when
 showing prices or using a catalogue price for a loan estimate.
 
@@ -54,7 +53,8 @@ showing prices or using a catalogue price for a loan estimate.
 Pass one `request` object with these optional fields:
 
 - `brand`: brand name.
-- `model`: exact full model name, including its variant.
+- `model`: exact model name from the catalogue, without the separate variant.
+- `variant`: exact variant name from the catalogue, when specified.
 - `max_price`: maximum price as a whole number of rupees.
 - `vehicle_type`: body type, such as `Sedan`, `SUV`, or `Hatchback`.
 
@@ -69,9 +69,10 @@ Search behaviour and result handling:
 - Text matching ignores letter case but otherwise requires an exact match.
   Use normal catalogue names where known. Do not send fuel or transmission
   preferences as `vehicle_type`.
-- A model-family request such as "Honda City" should start with a Honda search
-  without `model`; then select City variants from the returned names. Sending
-  `model: "City"` will not match a full variant such as `City VX`.
+- A model-family request such as "Honda City" should use `brand: "Honda"`
+  and `model: "City"`. For a trim request, pass the separate `variant` field
+  as well, using the exact stored value. If a name does not match, search by
+  brand to inspect the catalogue names before retrying.
 - `max_price` includes vehicles priced exactly at the limit. If the user asks
   for a strict upper limit, a minimum price, or a range, apply any additional
   conditions to the returned prices before presenting matches. There is no
@@ -81,7 +82,7 @@ Search behaviour and result handling:
 - For many matches, usually show three to five useful choices and say that
   they are a shortlist. Default to lower prices first unless the user asks
   for a different order. The tool's result order is not a quality ranking.
-- Show full variant names, listed prices, and IDs so the user can refer to a
+- Show model and variant together when variant is present, listed prices, and IDs so the user can refer to a
   specific car. Recommend based on verified facts and stated priorities;
   explain the reason without inventing claims such as "safest" or "best mileage".
 - If there are no matches, say there are no matches in this catalogue for those

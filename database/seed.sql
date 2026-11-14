@@ -1,211 +1,412 @@
--- Development seed: 20 Indian-market model families x 10 trims = 200 vehicles.
--- Prices are approximate ex-showroom INR. Deterministic and idempotent:
--- it WIPES the vehicles table, so never run it against real data.
-
+-- Original Aurion catalogue exported from Aurion_Data.sql.
+-- Loaded once on a fresh Docker volume; never truncates existing data.
 BEGIN;
 
-TRUNCATE TABLE vehicles RESTART IDENTITY;
+COPY public.vehicles (id, model, brand, price, vehicle_type, variant) FROM stdin;
+84	Scorpio N	Mahindra	1600000	SUV	V
+85	Scorpio N	Mahindra	1650000	SUV	VX
+86	Scorpio N	Mahindra	1700000	SUV	ZX
+87	Scorpio N	Mahindra	1750000	SUV	Sport
+88	Scorpio N	Mahindra	1800000	SUV	Premium
+89	Scorpio N	Mahindra	1850000	SUV	Limited
+90	Scorpio N	Mahindra	1900000	SUV	Signature
+91	Thar	Mahindra	1200000	SUV	Base
+92	Thar	Mahindra	1250000	SUV	S
+93	Thar	Mahindra	1300000	SUV	S Plus
+94	Thar	Mahindra	1350000	SUV	V
+95	Thar	Mahindra	1400000	SUV	VX
+96	Thar	Mahindra	1450000	SUV	ZX
+97	Thar	Mahindra	1500000	SUV	Sport
+98	Thar	Mahindra	1550000	SUV	Premium
+99	Thar	Mahindra	1600000	SUV	Limited
+100	Thar	Mahindra	1650000	SUV	Signature
+101	XUV 3XO	Mahindra	950000	SUV	Base
+102	XUV 3XO	Mahindra	1000000	SUV	S
+103	XUV 3XO	Mahindra	1050000	SUV	S Plus
+104	XUV 3XO	Mahindra	1100000	SUV	V
+105	XUV 3XO	Mahindra	1150000	SUV	VX
+106	XUV 3XO	Mahindra	1200000	SUV	ZX
+107	XUV 3XO	Mahindra	1250000	SUV	Sport
+108	XUV 3XO	Mahindra	1300000	SUV	Premium
+109	XUV 3XO	Mahindra	1350000	SUV	Limited
+110	XUV 3XO	Mahindra	1400000	SUV	Signature
+111	Baleno	Maruti Suzuki	700000	Hatchback	Base
+112	Baleno	Maruti Suzuki	750000	Hatchback	S
+113	Baleno	Maruti Suzuki	800000	Hatchback	S Plus
+114	Baleno	Maruti Suzuki	850000	Hatchback	V
+115	Baleno	Maruti Suzuki	900000	Hatchback	VX
+116	Baleno	Maruti Suzuki	950000	Hatchback	ZX
+117	Baleno	Maruti Suzuki	1000000	Hatchback	Sport
+118	Baleno	Maruti Suzuki	1050000	Hatchback	Premium
+119	Baleno	Maruti Suzuki	1100000	Hatchback	Limited
+120	Baleno	Maruti Suzuki	1150000	Hatchback	Signature
+121	Brezza	Maruti Suzuki	900000	SUV	Base
+122	Brezza	Maruti Suzuki	950000	SUV	S
+123	Brezza	Maruti Suzuki	1000000	SUV	S Plus
+124	Brezza	Maruti Suzuki	1050000	SUV	V
+125	Brezza	Maruti Suzuki	1100000	SUV	VX
+126	Brezza	Maruti Suzuki	1150000	SUV	ZX
+127	Brezza	Maruti Suzuki	1200000	SUV	Sport
+128	Brezza	Maruti Suzuki	1250000	SUV	Premium
+129	Brezza	Maruti Suzuki	1300000	SUV	Limited
+130	Brezza	Maruti Suzuki	1350000	SUV	Signature
+131	Swift	Maruti Suzuki	650000	Hatchback	Base
+132	Swift	Maruti Suzuki	700000	Hatchback	S
+133	Swift	Maruti Suzuki	750000	Hatchback	S Plus
+134	Swift	Maruti Suzuki	800000	Hatchback	V
+135	Swift	Maruti Suzuki	850000	Hatchback	VX
+136	Swift	Maruti Suzuki	900000	Hatchback	ZX
+137	Swift	Maruti Suzuki	950000	Hatchback	Sport
+138	Swift	Maruti Suzuki	1000000	Hatchback	Premium
+139	Swift	Maruti Suzuki	1050000	Hatchback	Limited
+140	Swift	Maruti Suzuki	1100000	Hatchback	Signature
+141	Harrier	Tata	1500000	SUV	Base
+142	Harrier	Tata	1550000	SUV	S
+143	Harrier	Tata	1600000	SUV	S Plus
+144	Harrier	Tata	1650000	SUV	V
+145	Harrier	Tata	1700000	SUV	VX
+146	Harrier	Tata	1750000	SUV	ZX
+147	Harrier	Tata	1800000	SUV	Sport
+148	Harrier	Tata	1850000	SUV	Premium
+149	Harrier	Tata	1900000	SUV	Limited
+150	Harrier	Tata	1950000	SUV	Signature
+151	Nexon	Tata	850000	SUV	Base
+152	Nexon	Tata	900000	SUV	S
+153	Nexon	Tata	950000	SUV	S Plus
+154	Nexon	Tata	1000000	SUV	V
+1	Amaze	Honda	800000	Sedan	Base
+2	Amaze	Honda	850000	Sedan	S
+3	Amaze	Honda	900000	Sedan	S Plus
+4	Amaze	Honda	950000	Sedan	V
+5	Amaze	Honda	1000000	Sedan	VX
+6	Amaze	Honda	1050000	Sedan	ZX
+7	Amaze	Honda	1100000	Sedan	Sport
+8	Amaze	Honda	1150000	Sedan	Premium
+9	Amaze	Honda	1200000	Sedan	Limited
+10	Amaze	Honda	1250000	Sedan	Signature
+11	City	Honda	1150000	Sedan	Base
+12	City	Honda	1200000	Sedan	S
+13	City	Honda	1250000	Sedan	S Plus
+14	City	Honda	1300000	Sedan	V
+15	City	Honda	1350000	Sedan	VX
+16	City	Honda	1400000	Sedan	ZX
+17	City	Honda	1450000	Sedan	Sport
+18	City	Honda	1500000	Sedan	Premium
+19	City	Honda	1550000	Sedan	Limited
+20	City	Honda	1600000	Sedan	Signature
+21	Elevate	Honda	1250000	SUV	Base
+22	Elevate	Honda	1300000	SUV	S
+23	Elevate	Honda	1350000	SUV	S Plus
+24	Elevate	Honda	1400000	SUV	V
+25	Elevate	Honda	1450000	SUV	VX
+26	Elevate	Honda	1500000	SUV	ZX
+27	Elevate	Honda	1550000	SUV	Sport
+28	Elevate	Honda	1600000	SUV	Premium
+29	Elevate	Honda	1650000	SUV	Limited
+30	Elevate	Honda	1700000	SUV	Signature
+31	Creta	Hyundai	1150000	SUV	Base
+32	Creta	Hyundai	1200000	SUV	S
+33	Creta	Hyundai	1250000	SUV	S Plus
+34	Creta	Hyundai	1300000	SUV	V
+35	Creta	Hyundai	1350000	SUV	VX
+36	Creta	Hyundai	1400000	SUV	ZX
+37	Creta	Hyundai	1450000	SUV	Sport
+38	Creta	Hyundai	1500000	SUV	Premium
+39	Creta	Hyundai	1550000	SUV	Limited
+40	Creta	Hyundai	1600000	SUV	Signature
+41	i20	Hyundai	730000	Hatchback	Base
+42	i20	Hyundai	780000	Hatchback	S
+43	i20	Hyundai	830000	Hatchback	S Plus
+44	i20	Hyundai	880000	Hatchback	V
+45	i20	Hyundai	930000	Hatchback	VX
+46	i20	Hyundai	980000	Hatchback	ZX
+47	i20	Hyundai	1030000	Hatchback	Sport
+48	i20	Hyundai	1080000	Hatchback	Premium
+49	i20	Hyundai	1130000	Hatchback	Limited
+50	i20	Hyundai	1180000	Hatchback	Signature
+51	Verna	Hyundai	1100000	Sedan	Base
+52	Verna	Hyundai	1150000	Sedan	S
+53	Verna	Hyundai	1200000	Sedan	S Plus
+54	Verna	Hyundai	1250000	Sedan	V
+55	Verna	Hyundai	1300000	Sedan	VX
+56	Verna	Hyundai	1350000	Sedan	ZX
+57	Verna	Hyundai	1400000	Sedan	Sport
+58	Verna	Hyundai	1450000	Sedan	Premium
+59	Verna	Hyundai	1500000	Sedan	Limited
+60	Verna	Hyundai	1550000	Sedan	Signature
+61	Seltos	Kia	1150000	SUV	Base
+62	Seltos	Kia	1200000	SUV	S
+63	Seltos	Kia	1250000	SUV	S Plus
+64	Seltos	Kia	1300000	SUV	V
+65	Seltos	Kia	1350000	SUV	VX
+66	Seltos	Kia	1400000	SUV	ZX
+67	Seltos	Kia	1450000	SUV	Sport
+68	Seltos	Kia	1500000	SUV	Premium
+69	Seltos	Kia	1550000	SUV	Limited
+70	Seltos	Kia	1600000	SUV	Signature
+71	Sonet	Kia	850000	SUV	Base
+72	Sonet	Kia	900000	SUV	S
+73	Sonet	Kia	950000	SUV	S Plus
+74	Sonet	Kia	1000000	SUV	V
+75	Sonet	Kia	1050000	SUV	VX
+76	Sonet	Kia	1100000	SUV	ZX
+77	Sonet	Kia	1150000	SUV	Sport
+78	Sonet	Kia	1200000	SUV	Premium
+79	Sonet	Kia	1250000	SUV	Limited
+80	Sonet	Kia	1300000	SUV	Signature
+81	Scorpio N	Mahindra	1450000	SUV	Base
+82	Scorpio N	Mahindra	1500000	SUV	S
+83	Scorpio N	Mahindra	1550000	SUV	S Plus
+155	Nexon	Tata	1050000	SUV	VX
+156	Nexon	Tata	1100000	SUV	ZX
+157	Nexon	Tata	1150000	SUV	Sport
+158	Nexon	Tata	1200000	SUV	Premium
+159	Nexon	Tata	1250000	SUV	Limited
+160	Nexon	Tata	1300000	SUV	Signature
+161	Tiago	Tata	600000	Hatchback	Base
+162	Tiago	Tata	650000	Hatchback	S
+163	Tiago	Tata	700000	Hatchback	S Plus
+164	Tiago	Tata	750000	Hatchback	V
+165	Tiago	Tata	800000	Hatchback	VX
+166	Tiago	Tata	850000	Hatchback	ZX
+167	Tiago	Tata	900000	Hatchback	Sport
+168	Tiago	Tata	950000	Hatchback	Premium
+169	Tiago	Tata	1000000	Hatchback	Limited
+170	Tiago	Tata	1050000	Hatchback	Signature
+171	Fortuner	Toyota	3400000	SUV	Base
+172	Fortuner	Toyota	3450000	SUV	S
+173	Fortuner	Toyota	3500000	SUV	S Plus
+174	Fortuner	Toyota	3550000	SUV	V
+175	Fortuner	Toyota	3600000	SUV	VX
+176	Fortuner	Toyota	3650000	SUV	ZX
+177	Fortuner	Toyota	3700000	SUV	Sport
+178	Fortuner	Toyota	3750000	SUV	Premium
+179	Fortuner	Toyota	3800000	SUV	Limited
+180	Fortuner	Toyota	3850000	SUV	Signature
+181	Glanza	Toyota	750000	Hatchback	Base
+182	Glanza	Toyota	800000	Hatchback	S
+183	Glanza	Toyota	850000	Hatchback	S Plus
+184	Glanza	Toyota	900000	Hatchback	V
+185	Glanza	Toyota	950000	Hatchback	VX
+186	Glanza	Toyota	1000000	Hatchback	ZX
+187	Glanza	Toyota	1050000	Hatchback	Sport
+188	Glanza	Toyota	1100000	Hatchback	Premium
+189	Glanza	Toyota	1150000	Hatchback	Limited
+190	Glanza	Toyota	1200000	Hatchback	Signature
+191	Urban Cruiser Hyryder	Toyota	1200000	SUV	Base
+192	Urban Cruiser Hyryder	Toyota	1250000	SUV	S
+193	Urban Cruiser Hyryder	Toyota	1300000	SUV	S Plus
+194	Urban Cruiser Hyryder	Toyota	1350000	SUV	V
+195	Urban Cruiser Hyryder	Toyota	1400000	SUV	VX
+196	Urban Cruiser Hyryder	Toyota	1450000	SUV	ZX
+197	Urban Cruiser Hyryder	Toyota	1500000	SUV	Sport
+198	Urban Cruiser Hyryder	Toyota	1550000	SUV	Premium
+199	Urban Cruiser Hyryder	Toyota	1600000	SUV	Limited
+200	Urban Cruiser Hyryder	Toyota	1650000	SUV	Signature
+\.
 
-INSERT INTO vehicles (model, brand, price, vehicle_type) VALUES
-    ('Amaze Base', 'Honda', 720000, 'Sedan'),
-    ('Amaze S', 'Honda', 790000, 'Sedan'),
-    ('Amaze V', 'Honda', 860000, 'Sedan'),
-    ('Amaze VX', 'Honda', 930000, 'Sedan'),
-    ('Amaze ZX', 'Honda', 995000, 'Sedan'),
-    ('Amaze S CVT', 'Honda', 1010000, 'Sedan'),
-    ('Amaze V CVT', 'Honda', 1060000, 'Sedan'),
-    ('Amaze VX CVT', 'Honda', 1120000, 'Sedan'),
-    ('Amaze ZX CVT', 'Honda', 1180000, 'Sedan'),
-    ('Amaze ZX CVT Elite', 'Honda', 1220000, 'Sedan'),
-    ('City SV', 'Honda', 1182000, 'Sedan'),
-    ('City V', 'Honda', 1265000, 'Sedan'),
-    ('City VX', 'Honda', 1371000, 'Sedan'),
-    ('City ZX', 'Honda', 1497000, 'Sedan'),
-    ('City V CVT', 'Honda', 1390000, 'Sedan'),
-    ('City VX CVT', 'Honda', 1496000, 'Sedan'),
-    ('City ZX CVT', 'Honda', 1622000, 'Sedan'),
-    ('City e:HEV V', 'Honda', 1900000, 'Sedan'),
-    ('City e:HEV ZX', 'Honda', 2055000, 'Sedan'),
-    ('City Elegant Edition', 'Honda', 1325000, 'Sedan'),
-    ('Elevate SV', 'Honda', 1191000, 'SUV'),
-    ('Elevate V', 'Honda', 1271000, 'SUV'),
-    ('Elevate VX', 'Honda', 1410000, 'SUV'),
-    ('Elevate ZX', 'Honda', 1571000, 'SUV'),
-    ('Elevate V CVT', 'Honda', 1391000, 'SUV'),
-    ('Elevate VX CVT', 'Honda', 1530000, 'SUV'),
-    ('Elevate ZX CVT', 'Honda', 1691000, 'SUV'),
-    ('Elevate Apex Edition', 'Honda', 1486000, 'SUV'),
-    ('Elevate Apex Edition CVT', 'Honda', 1606000, 'SUV'),
-    ('Elevate Black Edition CVT', 'Honda', 1673000, 'SUV'),
-    ('Swift LXi', 'Maruti Suzuki', 649000, 'Hatchback'),
-    ('Swift VXi', 'Maruti Suzuki', 729000, 'Hatchback'),
-    ('Swift VXi (O)', 'Maruti Suzuki', 757000, 'Hatchback'),
-    ('Swift ZXi', 'Maruti Suzuki', 829000, 'Hatchback'),
-    ('Swift ZXi Plus', 'Maruti Suzuki', 899000, 'Hatchback'),
-    ('Swift VXi AMT', 'Maruti Suzuki', 779000, 'Hatchback'),
-    ('Swift ZXi AMT', 'Maruti Suzuki', 879000, 'Hatchback'),
-    ('Swift ZXi Plus AMT', 'Maruti Suzuki', 949000, 'Hatchback'),
-    ('Swift VXi CNG', 'Maruti Suzuki', 819000, 'Hatchback'),
-    ('Swift ZXi CNG', 'Maruti Suzuki', 919000, 'Hatchback'),
-    ('Baleno Sigma', 'Maruti Suzuki', 666000, 'Hatchback'),
-    ('Baleno Delta', 'Maruti Suzuki', 750000, 'Hatchback'),
-    ('Baleno Zeta', 'Maruti Suzuki', 843000, 'Hatchback'),
-    ('Baleno Alpha', 'Maruti Suzuki', 938000, 'Hatchback'),
-    ('Baleno Delta AMT', 'Maruti Suzuki', 800000, 'Hatchback'),
-    ('Baleno Zeta AMT', 'Maruti Suzuki', 893000, 'Hatchback'),
-    ('Baleno Alpha AMT', 'Maruti Suzuki', 988000, 'Hatchback'),
-    ('Baleno Delta CNG', 'Maruti Suzuki', 840000, 'Hatchback'),
-    ('Baleno Zeta CNG', 'Maruti Suzuki', 933000, 'Hatchback'),
-    ('Baleno Regal Edition', 'Maruti Suzuki', 960000, 'Hatchback'),
-    ('Dzire LXi', 'Maruti Suzuki', 679000, 'Sedan'),
-    ('Dzire VXi', 'Maruti Suzuki', 779000, 'Sedan'),
-    ('Dzire ZXi', 'Maruti Suzuki', 889000, 'Sedan'),
-    ('Dzire ZXi Plus', 'Maruti Suzuki', 979000, 'Sedan'),
-    ('Dzire VXi AMT', 'Maruti Suzuki', 829000, 'Sedan'),
-    ('Dzire ZXi AMT', 'Maruti Suzuki', 939000, 'Sedan'),
-    ('Dzire ZXi Plus AMT', 'Maruti Suzuki', 1014000, 'Sedan'),
-    ('Dzire VXi CNG', 'Maruti Suzuki', 869000, 'Sedan'),
-    ('Dzire ZXi CNG', 'Maruti Suzuki', 979000, 'Sedan'),
-    ('Dzire Tour S', 'Maruti Suzuki', 665000, 'Sedan'),
-    ('Brezza LXi', 'Maruti Suzuki', 869000, 'SUV'),
-    ('Brezza VXi', 'Maruti Suzuki', 975000, 'SUV'),
-    ('Brezza ZXi', 'Maruti Suzuki', 1126000, 'SUV'),
-    ('Brezza ZXi Plus', 'Maruti Suzuki', 1264000, 'SUV'),
-    ('Brezza VXi AT', 'Maruti Suzuki', 1115000, 'SUV'),
-    ('Brezza ZXi AT', 'Maruti Suzuki', 1266000, 'SUV'),
-    ('Brezza ZXi Plus AT', 'Maruti Suzuki', 1398000, 'SUV'),
-    ('Brezza LXi CNG', 'Maruti Suzuki', 964000, 'SUV'),
-    ('Brezza VXi CNG', 'Maruti Suzuki', 1070000, 'SUV'),
-    ('Brezza ZXi CNG', 'Maruti Suzuki', 1221000, 'SUV'),
-    ('Ertiga LXi', 'Maruti Suzuki', 884000, 'MPV'),
-    ('Ertiga VXi', 'Maruti Suzuki', 1004000, 'MPV'),
-    ('Ertiga ZXi', 'Maruti Suzuki', 1114000, 'MPV'),
-    ('Ertiga ZXi Plus', 'Maruti Suzuki', 1184000, 'MPV'),
-    ('Ertiga VXi AT', 'Maruti Suzuki', 1144000, 'MPV'),
-    ('Ertiga ZXi AT', 'Maruti Suzuki', 1254000, 'MPV'),
-    ('Ertiga ZXi Plus AT', 'Maruti Suzuki', 1324000, 'MPV'),
-    ('Ertiga VXi CNG', 'Maruti Suzuki', 1099000, 'MPV'),
-    ('Ertiga ZXi CNG', 'Maruti Suzuki', 1209000, 'MPV'),
-    ('Ertiga Tour M', 'Maruti Suzuki', 1003000, 'MPV'),
-    ('i20 Era', 'Hyundai', 704000, 'Hatchback'),
-    ('i20 Magna', 'Hyundai', 779000, 'Hatchback'),
-    ('i20 Sportz', 'Hyundai', 838000, 'Hatchback'),
-    ('i20 Sportz (O)', 'Hyundai', 897000, 'Hatchback'),
-    ('i20 Asta', 'Hyundai', 938000, 'Hatchback'),
-    ('i20 Asta (O)', 'Hyundai', 1003000, 'Hatchback'),
-    ('i20 Sportz IVT', 'Hyundai', 948000, 'Hatchback'),
-    ('i20 Asta (O) IVT', 'Hyundai', 1124000, 'Hatchback'),
-    ('i20 N Line N6', 'Hyundai', 999000, 'Hatchback'),
-    ('i20 N Line N8', 'Hyundai', 1129000, 'Hatchback'),
-    ('Verna EX', 'Hyundai', 1107000, 'Sedan'),
-    ('Verna S', 'Hyundai', 1205000, 'Sedan'),
-    ('Verna SX', 'Hyundai', 1328000, 'Sedan'),
-    ('Verna SX (O)', 'Hyundai', 1495000, 'Sedan'),
-    ('Verna S IVT', 'Hyundai', 1338000, 'Sedan'),
-    ('Verna SX IVT', 'Hyundai', 1460000, 'Sedan'),
-    ('Verna SX (O) IVT', 'Hyundai', 1645000, 'Sedan'),
-    ('Verna SX Turbo', 'Hyundai', 1494000, 'Sedan'),
-    ('Verna SX (O) Turbo DCT', 'Hyundai', 1757000, 'Sedan'),
-    ('Verna SX Turbo DCT', 'Hyundai', 1622000, 'Sedan'),
-    ('Creta E', 'Hyundai', 1100000, 'SUV'),
-    ('Creta EX', 'Hyundai', 1239000, 'SUV'),
-    ('Creta S', 'Hyundai', 1369000, 'SUV'),
-    ('Creta S (O)', 'Hyundai', 1462000, 'SUV'),
-    ('Creta SX', 'Hyundai', 1543000, 'SUV'),
-    ('Creta SX (O)', 'Hyundai', 1735000, 'SUV'),
-    ('Creta S (O) IVT', 'Hyundai', 1609000, 'SUV'),
-    ('Creta SX (O) IVT', 'Hyundai', 1868000, 'SUV'),
-    ('Creta SX (O) Turbo DCT', 'Hyundai', 2030000, 'SUV'),
-    ('Creta SX (O) Diesel AT', 'Hyundai', 2050000, 'SUV'),
-    ('Venue E', 'Hyundai', 794000, 'SUV'),
-    ('Venue S', 'Hyundai', 900000, 'SUV'),
-    ('Venue S (O)', 'Hyundai', 977000, 'SUV'),
-    ('Venue SX', 'Hyundai', 1085000, 'SUV'),
-    ('Venue SX (O)', 'Hyundai', 1222000, 'SUV'),
-    ('Venue S (O) Turbo', 'Hyundai', 1015000, 'SUV'),
-    ('Venue SX Turbo DCT', 'Hyundai', 1275000, 'SUV'),
-    ('Venue SX (O) Turbo DCT', 'Hyundai', 1362000, 'SUV'),
-    ('Venue S Diesel', 'Hyundai', 1071000, 'SUV'),
-    ('Venue SX (O) Diesel', 'Hyundai', 1348000, 'SUV'),
-    ('Nexon Smart', 'Tata', 800000, 'SUV'),
-    ('Nexon Smart Plus', 'Tata', 890000, 'SUV'),
-    ('Nexon Pure', 'Tata', 970000, 'SUV'),
-    ('Nexon Creative', 'Tata', 1080000, 'SUV'),
-    ('Nexon Creative Plus', 'Tata', 1170000, 'SUV'),
-    ('Nexon Fearless', 'Tata', 1260000, 'SUV'),
-    ('Nexon Fearless Plus', 'Tata', 1350000, 'SUV'),
-    ('Nexon Pure AMT', 'Tata', 1040000, 'SUV'),
-    ('Nexon Creative DCA', 'Tata', 1230000, 'SUV'),
-    ('Nexon Fearless Plus Diesel', 'Tata', 1460000, 'SUV'),
-    ('Punch Pure', 'Tata', 600000, 'SUV'),
-    ('Punch Adventure', 'Tata', 670000, 'SUV'),
-    ('Punch Adventure Rhythm', 'Tata', 705000, 'SUV'),
-    ('Punch Accomplished', 'Tata', 770000, 'SUV'),
-    ('Punch Accomplished Plus', 'Tata', 830000, 'SUV'),
-    ('Punch Creative', 'Tata', 885000, 'SUV'),
-    ('Punch Creative Plus', 'Tata', 945000, 'SUV'),
-    ('Punch Adventure AMT', 'Tata', 725000, 'SUV'),
-    ('Punch Accomplished AMT', 'Tata', 825000, 'SUV'),
-    ('Punch Creative Plus AMT', 'Tata', 1000000, 'SUV'),
-    ('Altroz XE', 'Tata', 665000, 'Hatchback'),
-    ('Altroz XM', 'Tata', 730000, 'Hatchback'),
-    ('Altroz XM Plus', 'Tata', 790000, 'Hatchback'),
-    ('Altroz XZ', 'Tata', 860000, 'Hatchback'),
-    ('Altroz XZ Plus', 'Tata', 930000, 'Hatchback'),
-    ('Altroz XM Plus DCA', 'Tata', 890000, 'Hatchback'),
-    ('Altroz XZ Plus DCA', 'Tata', 1040000, 'Hatchback'),
-    ('Altroz XZ CNG', 'Tata', 950000, 'Hatchback'),
-    ('Altroz XZ Plus Diesel', 'Tata', 1060000, 'Hatchback'),
-    ('Altroz Racer R3', 'Tata', 1100000, 'Hatchback'),
-    ('XUV700 MX', 'Mahindra', 1399000, 'SUV'),
-    ('XUV700 AX3', 'Mahindra', 1699000, 'SUV'),
-    ('XUV700 AX5', 'Mahindra', 1789000, 'SUV'),
-    ('XUV700 AX5 S', 'Mahindra', 1689000, 'SUV'),
-    ('XUV700 AX7', 'Mahindra', 2099000, 'SUV'),
-    ('XUV700 AX7 L', 'Mahindra', 2349000, 'SUV'),
-    ('XUV700 AX3 AT', 'Mahindra', 1849000, 'SUV'),
-    ('XUV700 AX7 AT', 'Mahindra', 2259000, 'SUV'),
-    ('XUV700 AX7 L Diesel AT', 'Mahindra', 2549000, 'SUV'),
-    ('XUV700 AX7 L AWD', 'Mahindra', 2649000, 'SUV'),
-    ('Scorpio-N Z2', 'Mahindra', 1385000, 'SUV'),
-    ('Scorpio-N Z4', 'Mahindra', 1564000, 'SUV'),
-    ('Scorpio-N Z6', 'Mahindra', 1691000, 'SUV'),
-    ('Scorpio-N Z8 Select', 'Mahindra', 1749000, 'SUV'),
-    ('Scorpio-N Z8', 'Mahindra', 1873000, 'SUV'),
-    ('Scorpio-N Z8 L', 'Mahindra', 2029000, 'SUV'),
-    ('Scorpio-N Z4 Diesel', 'Mahindra', 1599000, 'SUV'),
-    ('Scorpio-N Z8 Diesel AT', 'Mahindra', 2049000, 'SUV'),
-    ('Scorpio-N Z8 L Diesel AT', 'Mahindra', 2219000, 'SUV'),
-    ('Scorpio-N Z8 L 4WD', 'Mahindra', 2409000, 'SUV'),
-    ('Seltos HTE', 'Kia', 1100000, 'SUV'),
-    ('Seltos HTK', 'Kia', 1239000, 'SUV'),
-    ('Seltos HTK Plus', 'Kia', 1405000, 'SUV'),
-    ('Seltos HTX', 'Kia', 1520000, 'SUV'),
-    ('Seltos HTX Plus', 'Kia', 1745000, 'SUV'),
-    ('Seltos GTX Plus', 'Kia', 1999000, 'SUV'),
-    ('Seltos X-Line', 'Kia', 2051000, 'SUV'),
-    ('Seltos HTX IVT', 'Kia', 1660000, 'SUV'),
-    ('Seltos GTX Plus DCT', 'Kia', 1999000, 'SUV'),
-    ('Seltos HTX Plus Diesel AT', 'Kia', 1880000, 'SUV'),
-    ('Sonet HTE', 'Kia', 800000, 'SUV'),
-    ('Sonet HTK', 'Kia', 893000, 'SUV'),
-    ('Sonet HTK Plus', 'Kia', 1012000, 'SUV'),
-    ('Sonet HTX', 'Kia', 1148000, 'SUV'),
-    ('Sonet HTX Plus', 'Kia', 1330000, 'SUV'),
-    ('Sonet GTX Plus', 'Kia', 1460000, 'SUV'),
-    ('Sonet X-Line', 'Kia', 1475000, 'SUV'),
-    ('Sonet HTK Plus Turbo', 'Kia', 1063000, 'SUV'),
-    ('Sonet HTX DCT', 'Kia', 1279000, 'SUV'),
-    ('Sonet GTX Plus Diesel AT', 'Kia', 1570000, 'SUV'),
-    ('Innova Crysta GX', 'Toyota', 1999000, 'MPV'),
-    ('Innova Crysta GX Plus', 'Toyota', 2139000, 'MPV'),
-    ('Innova Crysta VX', 'Toyota', 2482000, 'MPV'),
-    ('Innova Crysta ZX', 'Toyota', 2653000, 'MPV'),
-    ('Innova Crysta GX 8-Seater', 'Toyota', 2004000, 'MPV'),
-    ('Innova Crysta GX Plus 8-Seater', 'Toyota', 2144000, 'MPV'),
-    ('Innova Crysta VX 8-Seater', 'Toyota', 2487000, 'MPV'),
-    ('Innova Crysta VX FLT', 'Toyota', 2475000, 'MPV'),
-    ('Innova Crysta GX FLT', 'Toyota', 1999000, 'MPV'),
-    ('Innova Crysta GX Plus FLT', 'Toyota', 2134000, 'MPV');
+COPY public.vehicles_backup (id, model, brand, price, vehicle_type, variant) FROM stdin;
+42	i20	Hyundai	780000	Hatchback	S
+43	i20	Hyundai	830000	Hatchback	S Plus
+44	i20	Hyundai	880000	Hatchback	V
+45	i20	Hyundai	930000	Hatchback	VX
+46	i20	Hyundai	980000	Hatchback	ZX
+47	i20	Hyundai	1030000	Hatchback	Sport
+48	i20	Hyundai	1080000	Hatchback	Premium
+49	i20	Hyundai	1130000	Hatchback	Limited
+50	i20	Hyundai	1180000	Hatchback	Signature
+51	Verna	Hyundai	1100000	Sedan	Base
+52	Verna	Hyundai	1150000	Sedan	S
+53	Verna	Hyundai	1200000	Sedan	S Plus
+54	Verna	Hyundai	1250000	Sedan	V
+55	Verna	Hyundai	1300000	Sedan	VX
+56	Verna	Hyundai	1350000	Sedan	ZX
+57	Verna	Hyundai	1400000	Sedan	Sport
+58	Verna	Hyundai	1450000	Sedan	Premium
+59	Verna	Hyundai	1500000	Sedan	Limited
+60	Verna	Hyundai	1550000	Sedan	Signature
+61	Seltos	Kia	1150000	SUV	Base
+62	Seltos	Kia	1200000	SUV	S
+63	Seltos	Kia	1250000	SUV	S Plus
+64	Seltos	Kia	1300000	SUV	V
+65	Seltos	Kia	1350000	SUV	VX
+66	Seltos	Kia	1400000	SUV	ZX
+67	Seltos	Kia	1450000	SUV	Sport
+68	Seltos	Kia	1500000	SUV	Premium
+69	Seltos	Kia	1550000	SUV	Limited
+70	Seltos	Kia	1600000	SUV	Signature
+71	Sonet	Kia	850000	SUV	Base
+72	Sonet	Kia	900000	SUV	S
+73	Sonet	Kia	950000	SUV	S Plus
+74	Sonet	Kia	1000000	SUV	V
+75	Sonet	Kia	1050000	SUV	VX
+76	Sonet	Kia	1100000	SUV	ZX
+77	Sonet	Kia	1150000	SUV	Sport
+78	Sonet	Kia	1200000	SUV	Premium
+79	Sonet	Kia	1250000	SUV	Limited
+80	Sonet	Kia	1300000	SUV	Signature
+81	Scorpio N	Mahindra	1450000	SUV	Base
+82	Scorpio N	Mahindra	1500000	SUV	S
+83	Scorpio N	Mahindra	1550000	SUV	S Plus
+84	Scorpio N	Mahindra	1600000	SUV	V
+85	Scorpio N	Mahindra	1650000	SUV	VX
+86	Scorpio N	Mahindra	1700000	SUV	ZX
+87	Scorpio N	Mahindra	1750000	SUV	Sport
+88	Scorpio N	Mahindra	1800000	SUV	Premium
+89	Scorpio N	Mahindra	1850000	SUV	Limited
+90	Scorpio N	Mahindra	1900000	SUV	Signature
+91	Thar	Mahindra	1200000	SUV	Base
+92	Thar	Mahindra	1250000	SUV	S
+93	Thar	Mahindra	1300000	SUV	S Plus
+94	Thar	Mahindra	1350000	SUV	V
+95	Thar	Mahindra	1400000	SUV	VX
+96	Thar	Mahindra	1450000	SUV	ZX
+97	Thar	Mahindra	1500000	SUV	Sport
+98	Thar	Mahindra	1550000	SUV	Premium
+99	Thar	Mahindra	1600000	SUV	Limited
+100	Thar	Mahindra	1650000	SUV	Signature
+101	XUV 3XO	Mahindra	950000	SUV	Base
+102	XUV 3XO	Mahindra	1000000	SUV	S
+103	XUV 3XO	Mahindra	1050000	SUV	S Plus
+104	XUV 3XO	Mahindra	1100000	SUV	V
+105	XUV 3XO	Mahindra	1150000	SUV	VX
+106	XUV 3XO	Mahindra	1200000	SUV	ZX
+107	XUV 3XO	Mahindra	1250000	SUV	Sport
+108	XUV 3XO	Mahindra	1300000	SUV	Premium
+109	XUV 3XO	Mahindra	1350000	SUV	Limited
+110	XUV 3XO	Mahindra	1400000	SUV	Signature
+111	Baleno	Maruti Suzuki	700000	Hatchback	Base
+112	Baleno	Maruti Suzuki	750000	Hatchback	S
+113	Baleno	Maruti Suzuki	800000	Hatchback	S Plus
+114	Baleno	Maruti Suzuki	850000	Hatchback	V
+115	Baleno	Maruti Suzuki	900000	Hatchback	VX
+116	Baleno	Maruti Suzuki	950000	Hatchback	ZX
+117	Baleno	Maruti Suzuki	1000000	Hatchback	Sport
+118	Baleno	Maruti Suzuki	1050000	Hatchback	Premium
+119	Baleno	Maruti Suzuki	1100000	Hatchback	Limited
+120	Baleno	Maruti Suzuki	1150000	Hatchback	Signature
+121	Brezza	Maruti Suzuki	900000	SUV	Base
+122	Brezza	Maruti Suzuki	950000	SUV	S
+123	Brezza	Maruti Suzuki	1000000	SUV	S Plus
+124	Brezza	Maruti Suzuki	1050000	SUV	V
+125	Brezza	Maruti Suzuki	1100000	SUV	VX
+126	Brezza	Maruti Suzuki	1150000	SUV	ZX
+127	Brezza	Maruti Suzuki	1200000	SUV	Sport
+128	Brezza	Maruti Suzuki	1250000	SUV	Premium
+129	Brezza	Maruti Suzuki	1300000	SUV	Limited
+130	Brezza	Maruti Suzuki	1350000	SUV	Signature
+131	Swift	Maruti Suzuki	650000	Hatchback	Base
+132	Swift	Maruti Suzuki	700000	Hatchback	S
+133	Swift	Maruti Suzuki	750000	Hatchback	S Plus
+134	Swift	Maruti Suzuki	800000	Hatchback	V
+135	Swift	Maruti Suzuki	850000	Hatchback	VX
+136	Swift	Maruti Suzuki	900000	Hatchback	ZX
+137	Swift	Maruti Suzuki	950000	Hatchback	Sport
+138	Swift	Maruti Suzuki	1000000	Hatchback	Premium
+139	Swift	Maruti Suzuki	1050000	Hatchback	Limited
+140	Swift	Maruti Suzuki	1100000	Hatchback	Signature
+141	Harrier	Tata	1500000	SUV	Base
+142	Harrier	Tata	1550000	SUV	S
+143	Harrier	Tata	1600000	SUV	S Plus
+144	Harrier	Tata	1650000	SUV	V
+145	Harrier	Tata	1700000	SUV	VX
+146	Harrier	Tata	1750000	SUV	ZX
+147	Harrier	Tata	1800000	SUV	Sport
+148	Harrier	Tata	1850000	SUV	Premium
+149	Harrier	Tata	1900000	SUV	Limited
+150	Harrier	Tata	1950000	SUV	Signature
+151	Nexon	Tata	850000	SUV	Base
+152	Nexon	Tata	900000	SUV	S
+153	Nexon	Tata	950000	SUV	S Plus
+154	Nexon	Tata	1000000	SUV	V
+1	Amaze	Honda	800000	Sedan	Base
+2	Amaze	Honda	850000	Sedan	S
+3	Amaze	Honda	900000	Sedan	S Plus
+4	Amaze	Honda	950000	Sedan	V
+5	Amaze	Honda	1000000	Sedan	VX
+6	Amaze	Honda	1050000	Sedan	ZX
+7	Amaze	Honda	1100000	Sedan	Sport
+8	Amaze	Honda	1150000	Sedan	Premium
+9	Amaze	Honda	1200000	Sedan	Limited
+10	Amaze	Honda	1250000	Sedan	Signature
+11	City	Honda	1150000	Sedan	Base
+12	City	Honda	1200000	Sedan	S
+13	City	Honda	1250000	Sedan	S Plus
+14	City	Honda	1300000	Sedan	V
+15	City	Honda	1350000	Sedan	VX
+16	City	Honda	1400000	Sedan	ZX
+17	City	Honda	1450000	Sedan	Sport
+18	City	Honda	1500000	Sedan	Premium
+19	City	Honda	1550000	Sedan	Limited
+20	City	Honda	1600000	Sedan	Signature
+21	Elevate	Honda	1250000	SUV	Base
+22	Elevate	Honda	1300000	SUV	S
+23	Elevate	Honda	1350000	SUV	S Plus
+24	Elevate	Honda	1400000	SUV	V
+25	Elevate	Honda	1450000	SUV	VX
+26	Elevate	Honda	1500000	SUV	ZX
+27	Elevate	Honda	1550000	SUV	Sport
+28	Elevate	Honda	1600000	SUV	Premium
+29	Elevate	Honda	1650000	SUV	Limited
+30	Elevate	Honda	1700000	SUV	Signature
+31	Creta	Hyundai	1150000	SUV	Base
+32	Creta	Hyundai	1200000	SUV	S
+33	Creta	Hyundai	1250000	SUV	S Plus
+34	Creta	Hyundai	1300000	SUV	V
+35	Creta	Hyundai	1350000	SUV	VX
+36	Creta	Hyundai	1400000	SUV	ZX
+37	Creta	Hyundai	1450000	SUV	Sport
+38	Creta	Hyundai	1500000	SUV	Premium
+39	Creta	Hyundai	1550000	SUV	Limited
+40	Creta	Hyundai	1600000	SUV	Signature
+41	i20	Hyundai	730000	Hatchback	Base
+155	Nexon	Tata	1050000	SUV	VX
+156	Nexon	Tata	1100000	SUV	ZX
+157	Nexon	Tata	1150000	SUV	Sport
+158	Nexon	Tata	1200000	SUV	Premium
+159	Nexon	Tata	1250000	SUV	Limited
+160	Nexon	Tata	1300000	SUV	Signature
+161	Tiago	Tata	600000	Hatchback	Base
+162	Tiago	Tata	650000	Hatchback	S
+163	Tiago	Tata	700000	Hatchback	S Plus
+164	Tiago	Tata	750000	Hatchback	V
+165	Tiago	Tata	800000	Hatchback	VX
+166	Tiago	Tata	850000	Hatchback	ZX
+167	Tiago	Tata	900000	Hatchback	Sport
+168	Tiago	Tata	950000	Hatchback	Premium
+169	Tiago	Tata	1000000	Hatchback	Limited
+170	Tiago	Tata	1050000	Hatchback	Signature
+171	Fortuner	Toyota	3400000	SUV	Base
+172	Fortuner	Toyota	3450000	SUV	S
+173	Fortuner	Toyota	3500000	SUV	S Plus
+174	Fortuner	Toyota	3550000	SUV	V
+175	Fortuner	Toyota	3600000	SUV	VX
+176	Fortuner	Toyota	3650000	SUV	ZX
+177	Fortuner	Toyota	3700000	SUV	Sport
+178	Fortuner	Toyota	3750000	SUV	Premium
+179	Fortuner	Toyota	3800000	SUV	Limited
+180	Fortuner	Toyota	3850000	SUV	Signature
+181	Glanza	Toyota	750000	Hatchback	Base
+182	Glanza	Toyota	800000	Hatchback	S
+183	Glanza	Toyota	850000	Hatchback	S Plus
+184	Glanza	Toyota	900000	Hatchback	V
+185	Glanza	Toyota	950000	Hatchback	VX
+186	Glanza	Toyota	1000000	Hatchback	ZX
+187	Glanza	Toyota	1050000	Hatchback	Sport
+188	Glanza	Toyota	1100000	Hatchback	Premium
+189	Glanza	Toyota	1150000	Hatchback	Limited
+190	Glanza	Toyota	1200000	Hatchback	Signature
+191	Urban Cruiser Hyryder	Toyota	1200000	SUV	Base
+192	Urban Cruiser Hyryder	Toyota	1250000	SUV	S
+193	Urban Cruiser Hyryder	Toyota	1300000	SUV	S Plus
+194	Urban Cruiser Hyryder	Toyota	1350000	SUV	V
+195	Urban Cruiser Hyryder	Toyota	1400000	SUV	VX
+196	Urban Cruiser Hyryder	Toyota	1450000	SUV	ZX
+197	Urban Cruiser Hyryder	Toyota	1500000	SUV	Sport
+198	Urban Cruiser Hyryder	Toyota	1550000	SUV	Premium
+199	Urban Cruiser Hyryder	Toyota	1600000	SUV	Limited
+200	Urban Cruiser Hyryder	Toyota	1650000	SUV	Signature
+\.
 
+SELECT pg_catalog.setval('public.vehicles_id_seq', 200, true);
 COMMIT;

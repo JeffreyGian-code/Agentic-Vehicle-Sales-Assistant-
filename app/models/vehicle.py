@@ -6,3 +6,4 @@ class Vehicle(BaseModel):
     brand: str
     price: int
     vehicle_type: str
+    variant: str | None = None
