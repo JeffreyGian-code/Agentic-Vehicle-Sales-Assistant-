@@ -56,7 +56,10 @@ Pass one `request` object with these optional fields:
 - `model`: exact model name from the catalogue, without the separate variant.
 - `variant`: exact variant name from the catalogue, when specified.
 - `max_price`: maximum price as a whole number of rupees.
+- `min_price`: minimum price as a whole number of rupees.
 - `vehicle_type`: body type, such as `Sedan`, `SUV`, or `Hatchback`.
+- `sort_order`: `price_asc` (default) or `price_desc`. Use descending order only
+  when the customer requests highest prices first or closest to their budget.
 
 Example: "Find Honda sedans under 10 lakh" becomes:
 
@@ -73,15 +76,20 @@ Search behaviour and result handling:
   and `model: "City"`. For a trim request, pass the separate `variant` field
   as well, using the exact stored value. If a name does not match, search by
   brand to inspect the catalogue names before retrying.
-- `max_price` includes vehicles priced exactly at the limit. If the user asks
-  for a strict upper limit, a minimum price, or a range, apply any additional
-  conditions to the returned prices before presenting matches. There is no
-  minimum-price field. Do not pass unsupported tool arguments.
+- Both price bounds are inclusive. Pass `min_price` and `max_price` for ranges
+  so filtering happens before the shortlist is selected. For strict bounds,
+  use whole-rupee equivalents: below Rs 10 lakh means `max_price: 999999`;
+  above Rs 5 lakh means `min_price: 500001`. Never send a negative bound or
+  a minimum exceeding the maximum; explain when no nonnegative price can match.
 - Honour every explicit requirement. Never quietly raise the budget, change
   the brand, or present a partial match as a complete match.
-- For many matches, usually show three to five useful choices and say that
-  they are a shortlist. Default to lower prices first unless the user asks
-  for a different order. The tool's result order is not a quality ranking.
+- The tool returns an ordered shortlist of up to three matches. Broad searches
+  return distinct brand/model combinations, using the cheapest matching variant
+  by default. A specific model search can return up to three variants. With
+  `price_desc`, both variant selection and final ranking use highest prices
+  first. Equal prices are ordered by ID. Preserve the tool's order and describe
+  results as a shortlist ranked by listed price, not overall vehicle quality.
+  Do not repeat searches merely to fill the shortlist or retrieve the catalogue.
 - Show model and variant together when variant is present, listed prices, and IDs so the user can refer to a
   specific car. Recommend based on verified facts and stated priorities;
   explain the reason without inventing claims such as "safest" or "best mileage".

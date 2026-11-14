@@ -20,10 +20,33 @@ def test_search_by_brand_and_price():
         max_price=1000000,
     )
 
-    assert len(results) == 5
+    assert len(results) == 1
 
     assert {vehicle.model for vehicle in results} == {"Amaze"}
-    assert {vehicle.variant for vehicle in results} == {"Base", "S", "S Plus", "V", "VX"}
+    assert results[0].variant == "Base"
+
+
+def test_search_shortlist_and_price_order():
+    service = create_service()
+    for order in ("price_asc", "price_desc"):
+        results = service.search(sort_order=order)
+        assert len(results) == 3
+        assert len({(v.brand.lower(), v.model.lower()) for v in results}) == 3
+        assert [v.price for v in results] == sorted(
+            (v.price for v in results), reverse=order == "price_desc"
+        )
+
+
+def test_search_model_variants_and_inclusive_range():
+    service = create_service()
+    results = service.search(
+        brand="honda", model="amaze", min_price=800000, max_price=900000
+    )
+    assert [v.price for v in results] == [800000, 850000, 900000]
+    assert [v.price for v in service.search(
+        brand="Honda", model="Amaze", min_price=800000, max_price=900000,
+        sort_order="price_desc",
+    )] == [900000, 850000, 800000]
 
 
 def test_get_vehicle_by_id():

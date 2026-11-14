@@ -1,6 +1,7 @@
 from sqlalchemy import text
 
 from app.database import engine
+from app.models.SearchRequest import SortOrder
 from app.models.vehicle import Vehicle
 from app.repositories.vehicle_repository import VehicleRepository
 
@@ -15,8 +16,15 @@ class PostgresVehicleRepository(VehicleRepository):
         variant: str | None = None,
         max_price: int | None = None,
         vehicle_type: str | None = None,
+        min_price: int | None = None,
+        sort_order: SortOrder = "price_asc",
     ) -> list[Vehicle]:
 
+        # Only allow fixed SQL directions; customer input is never interpolated.
+        directions = {"price_asc": "ASC", "price_desc": "DESC"}
+        if sort_order not in directions:
+            raise ValueError("Unsupported sort_order")
+        direction = directions[sort_order]
         query = """
             SELECT id, model, brand, price, vehicle_type, variant
             FROM vehicles
@@ -41,6 +49,10 @@ class PostgresVehicleRepository(VehicleRepository):
             conditions.append("price <= :max_price")
             parameters["max_price"] = max_price
 
+        if min_price is not None:
+            conditions.append("price >= :min_price")
+            parameters["min_price"] = min_price
+
         if vehicle_type:
             conditions.append(
                 "LOWER(vehicle_type) = LOWER(:vehicle_type)"
@@ -50,7 +62,21 @@ class PostgresVehicleRepository(VehicleRepository):
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " ORDER BY id"
+        if not model:
+            # Filter before choosing one representative per brand/model.
+            query = f"""
+                SELECT id, model, brand, price, vehicle_type, variant
+                FROM (
+                    SELECT filtered.*, ROW_NUMBER() OVER (
+                        PARTITION BY LOWER(brand), LOWER(model)
+                        ORDER BY price {direction}, id ASC
+                    ) AS model_rank
+                    FROM ({query}) AS filtered
+                ) AS ranked
+                WHERE model_rank = 1
+            """
+
+        query += f" ORDER BY price {direction}, id ASC LIMIT 3"
 
         with engine.connect() as connection:
             result = connection.execute(

@@ -31,7 +31,9 @@ class AgentTools:
             variant=request.variant,
             max_price=request.max_price,
             vehicle_type=request.vehicle_type,
-            )
+            min_price=request.min_price,
+            sort_order=request.sort_order,
+        )
 
     def get_vehicle_details(
         self,
@@ -67,7 +69,10 @@ class AgentTools:
                 name="search_vehicles",
                 description=(
                     "Search vehicles using brand, model, variant, "
-                    "maximum price, and vehicle type."
+                    "minimum/maximum price, and vehicle type. Returns an ordered "
+                    "shortlist of up to three distinct models, or up to three "
+                    "variants when model is specified. sort_order defaults to "
+                    "price_asc; use price_desc only when requested."
                 ),
             ),
             StructuredTool.from_function(

@@ -181,3 +181,4 @@ Deployment is not part of this validation workflow.
 - Connections come from a SQLAlchemy engine with `pool_pre_ping=True` (`app/database.py`) and are released by context managers after each call.
 - Brand, model, vehicle type and price are indexed. Text matching is case-insensitive.
 - `model` and `variant` are separate, case-insensitive exact-match filters (for example, model `City` and variant `VX`).
+- Vehicle searches return up to three results, lowest listed price first. Broad searches show one matching variant per brand/model; specific model searches show variants. Optional inclusive `min_price`/`max_price` bounds are applied before selection. Use `sort_order: "price_desc"` for highest prices first; equal prices use ID order.
