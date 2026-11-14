@@ -6,4 +6,4 @@ class SearchRequest(BaseModel):
     model: str | None = None
     max_price: int | None = Field(default=None, ge=0)
     vehicle_type: str | None = None
-    
+    variant: str | None = None

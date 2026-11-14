@@ -13,6 +13,7 @@ class VehicleService:
         max_price: int | None = None,
         vehicle_type: str | None = None,
         model: str | None = None,
+        variant: str | None = None,
     ) -> list[Vehicle]:
 
         return self.repository.search(
@@ -20,6 +21,7 @@ class VehicleService:
             max_price=max_price,
             vehicle_type=vehicle_type,
             model=model,
+            variant=variant,
         )
 
     def get_by_id(

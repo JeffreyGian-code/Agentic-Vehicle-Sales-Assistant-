@@ -32,18 +32,18 @@ This job checks the Python application:
 2. Set up Python **3.12**.
 3. Install packages from `requirements.txt`, plus the matching
    `psycopg[binary]` package for connecting to PostgreSQL.
-4. Prepare a temporary PostgreSQL **17** database.
+4. Prepare a temporary PostgreSQL **18** database.
 5. Run all Python tests with `python -m pytest`.
 
 The database runs in its own service container. GitHub waits for its health
 check to pass before starting the job's steps. The workflow then runs these
 files in order:
 
-- `database/schema.sql` creates the table and indexes.
-- `database/seed.sql` loads 200 sample vehicles.
+- `database/schema.sql` creates both original tables, constraints, and indexes.
+- `database/seed.sql` loads the 200 original vehicles and 200 backup rows, including variants.
 
 This is necessary because the vehicle tests query a real database and expect
-specific sample vehicles. If either SQL file fails, the initialization step
+specific records from the original catalogue. If either SQL file fails, the initialization step
 fails immediately.
 
 `DATABASE_URL` points the application to this temporary database on port

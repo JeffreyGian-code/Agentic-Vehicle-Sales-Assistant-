@@ -12,12 +12,13 @@ class PostgresVehicleRepository(VehicleRepository):
         self,
         brand: str | None = None,
         model: str | None = None,
+        variant: str | None = None,
         max_price: int | None = None,
         vehicle_type: str | None = None,
     ) -> list[Vehicle]:
 
         query = """
-            SELECT id, model, brand, price, vehicle_type
+            SELECT id, model, brand, price, vehicle_type, variant
             FROM vehicles
         """
 
@@ -31,6 +32,10 @@ class PostgresVehicleRepository(VehicleRepository):
         if model:
             conditions.append("LOWER(model) = LOWER(:model)")
             parameters["model"] = model
+
+        if variant:
+            conditions.append("LOWER(variant) = LOWER(:variant)")
+            parameters["variant"] = variant
 
         if max_price is not None:
             conditions.append("price <= :max_price")
@@ -66,7 +71,7 @@ class PostgresVehicleRepository(VehicleRepository):
     ) -> Vehicle | None:
 
         query = """
-            SELECT id, model, brand, price, vehicle_type
+            SELECT id, model, brand, price, vehicle_type, variant
             FROM vehicles
             WHERE id = :vehicle_id
         """

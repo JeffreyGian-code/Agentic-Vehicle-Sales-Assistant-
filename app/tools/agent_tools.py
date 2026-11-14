@@ -28,6 +28,7 @@ class AgentTools:
         return self.vehicle_service.search(
             brand=request.brand,
             model=request.model,
+            variant=request.variant,
             max_price=request.max_price,
             vehicle_type=request.vehicle_type,
             )
@@ -65,7 +66,7 @@ class AgentTools:
                 func=self.search_vehicles,
                 name="search_vehicles",
                 description=(
-                    "Search vehicles using brand, "
+                    "Search vehicles using brand, model, variant, "
                     "maximum price, and vehicle type."
                 ),
             ),
